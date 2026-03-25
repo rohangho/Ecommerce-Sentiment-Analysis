@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDA Aspect Sentiment Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --surface-color: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #edf2f4;
+            --text-muted: #8d99ae;
+            
+            --positive-gradient: linear-gradient(135deg, #2b9348 0%, #007f5f 100%);
+            --neutral-gradient: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
+            --negative-gradient: linear-gradient(135deg, #d00000 0%, #9d0208 100%);
+            
+            --positive-color: #52b788;
+            --neutral-color: #c77dff;
+            --negative-color: #ff4d6d;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(82, 183, 136, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(199, 125, 255, 0.05), transparent 25%);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3.5em;
+            font-weight: 800;
+            background: linear-gradient(90deg, #edf2f4, #8d99ae);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Filter Tabs */
+        .filter-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .filter-btn {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1em;
+            font-weight: 600;
+            padding: 12px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            background: var(--surface-color);
+            color: var(--text-muted);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .filter-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 30px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .filter-btn:hover {
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .filter-btn.active {
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        .filter-btn[data-target="Positive"].active { background: var(--positive-gradient); }
+        .filter-btn[data-target="Neutral"].active { background: var(--neutral-gradient); }
+        .filter-btn[data-target="Negative"].active { background: var(--negative-gradient); }
+
+        /* Dashboard Surface */
+        .dashboard-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .aspect-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .aspect-grid.active {
+            display: grid;
+        }
+
+        /* Aspect Card Glassmorphism */
+        .aspect-card {
+            background: var(--surface-color);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .aspect-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+        }
+
+        /* Card theme variants */
+        #Positive .aspect-card::after { background-color: var(--positive-color); }
+        #Neutral .aspect-card::after { background-color: var(--neutral-color); }
+        #Negative .aspect-card::after { background-color: var(--negative-color); }
+
+        .aspect-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Card Header */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .aspect-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #fff;
+            text-transform: capitalize;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .aspect-count {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Products List */
+        .products-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .products-label {
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .product-tag {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #ced4da;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .product-tag::before {
+            content: '•';
+            margin-right: 8px;
+            color: var(--text-muted);
+        }
+
+        #Positive .product-tag::before { color: var(--positive-color); }
+        #Neutral .product-tag::before { color: var(--neutral-color); }
+        #Negative .product-tag::before { color: var(--negative-color); }
+
+        .product-tag:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        /* Empty State */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Responsiveness */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5em; }
+            .aspect-grid { grid-template-columns: 1fr; }
+            .filter-container { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Sentiment Aspect Dashboard</h1>
+        <p class="subtitle">An interactive exploration of product features evaluated by user reviews, extracted via localized Natural Language Processing.</p>
+    </header>
+
+    <div class="filter-container">
+        <button class="filter-btn active" data-target="Positive" onclick="switchTab('Positive')">Positive Aspects</button>
+        <button class="filter-btn" data-target="Neutral" onclick="switchTab('Neutral')">Neutral Aspects</button>
+        <button class="filter-btn" data-target="Negative" onclick="switchTab('Negative')">Negative Aspects</button>
+    </div>
+
+    <div class="dashboard-wrapper">
+        
+        <!-- POSITIVE TAB -->
+        <div id="Positive" class="aspect-grid active">
+            {% if top_aspects['Positive']|length > 0 %}
+                {% for aspect_obj in top_aspects['Positive'] %}
+                <div class="aspect-card">
+                    <div class="card-header">
+                        <h3 class="aspect-title">{{ aspect_obj.aspect }}</h3>
+                        <span class="aspect-count">{{ aspect_obj.count }} Mentions</span>
+                    </div>
+                    <div class="products-section">
+                        <div class="products-label">Top Referenced Products</div>
+                        {% for prod in aspect_obj.products %}
+                            <div class="product-tag">{{ prod }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">No Positive Aspects Found.</div>
+            {% endif %}
+        </div>
+
+        <!-- NEUTRAL TAB -->
+        <div id="Neutral" class="aspect-grid">
+            {% if top_aspects['Neutral']|length > 0 %}
+                {% for aspect_obj in top_aspects['Neutral'] %}
+                <div class="aspect-card">
+                    <div class="card-header">
+                        <h3 class="aspect-title">{{ aspect_obj.aspect }}</h3>
+                        <span class="aspect-count">{{ aspect_obj.count }} Mentions</span>
+                    </div>
+                    <div class="products-section">
+                        <div class="products-label">Top Referenced Products</div>
+                        {% for prod in aspect_obj.products %}
+                            <div class="product-tag">{{ prod }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">No Neutral Aspects Found.</div>
+            {% endif %}
+        </div>
+
+        <!-- NEGATIVE TAB -->
+        <div id="Negative" class="aspect-grid">
+            {% if top_aspects['Negative']|length > 0 %}
+                {% for aspect_obj in top_aspects['Negative'] %}
+                <div class="aspect-card">
+                    <div class="card-header">
+                        <h3 class="aspect-title">{{ aspect_obj.aspect }}</h3>
+                        <span class="aspect-count">{{ aspect_obj.count }} Mentions</span>
+                    </div>
+                    <div class="products-section">
+                        <div class="products-label">Top Referenced Products</div>
+                        {% for prod in aspect_obj.products %}
+                            <div class="product-tag">{{ prod }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">No Negative Aspects Found.</div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <script>
+        function switchTab(targetId) {
+            // Update buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-target') === targetId) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update grids
+            document.querySelectorAll('.aspect-grid').forEach(grid => {
+                if (grid.id === targetId) {
+                    grid.classList.add('active');
+                } else {
+                    grid.classList.remove('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
