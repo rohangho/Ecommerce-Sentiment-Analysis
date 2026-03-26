@@ -30,11 +30,11 @@ class AspectExtractor:
 
         logger.info("Extracting aspects from reviews... This might take a few moments.")
         
-        # Structure: { sentiment: { aspect: {'count': int, 'products': Counter()} } }
+        # Structure: { sentiment: { aspect: {'count': int, 'products': { product_name: [review_texts] } } } }
         raw_aspects = {
-            'Positive': defaultdict(lambda: {'count': 0, 'products': Counter()}),
-            'Neutral': defaultdict(lambda: {'count': 0, 'products': Counter()}),
-            'Negative': defaultdict(lambda: {'count': 0, 'products': Counter()}),
+            'Positive': defaultdict(lambda: {'count': 0, 'products': defaultdict(list)}),
+            'Neutral': defaultdict(lambda: {'count': 0, 'products': defaultdict(list)}),
+            'Negative': defaultdict(lambda: {'count': 0, 'products': defaultdict(list)}),
         }
 
         for _, row in self.df.iterrows():
@@ -49,7 +49,9 @@ class AspectExtractor:
                 aspects = self._extract_noun_phrases(text)
                 for aspect in aspects:
                     raw_aspects[sentiment][aspect]['count'] += 1
-                    raw_aspects[sentiment][aspect]['products'][product_name] += 1
+                    # Store the review text (limit to avoid huge data)
+                    if len(raw_aspects[sentiment][aspect]['products'][product_name]) < 3:
+                        raw_aspects[sentiment][aspect]['products'][product_name].append(str(text)[:500])
 
         # Filter and structure the output
         filtered_aspects = {'Positive': [], 'Neutral': [], 'Negative': []}
@@ -57,12 +59,19 @@ class AspectExtractor:
         for sentiment in raw_aspects:
             for aspect, data in raw_aspects[sentiment].items():
                 if aspect not in STOP_ASPECTS and len(aspect) > 2:
-                    # format the product names nicely (take max top 3)
-                    top_products = [p[0] for p in data['products'].most_common(3)]
+                    # Build product list with reviews (top 3 products)
+                    products_with_reviews = []
+                    sorted_products = sorted(data['products'].items(), key=lambda x: len(x[1]), reverse=True)[:3]
+                    for prod_name, reviews in sorted_products:
+                        products_with_reviews.append({
+                            'name': prod_name,
+                            'reviews': reviews
+                        })
+                    
                     filtered_aspects[sentiment].append({
                         'aspect': aspect,
                         'count': data['count'],
-                        'products': top_products
+                        'products': products_with_reviews
                     })
             
             # Sort by frequency and get the top N

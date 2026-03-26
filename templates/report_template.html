@@ -12,27 +12,28 @@
             --border-color: rgba(255, 255, 255, 0.1);
             --text-main: #edf2f4;
             --text-muted: #8d99ae;
-            
+
             --positive-gradient: linear-gradient(135deg, #2b9348 0%, #007f5f 100%);
             --neutral-gradient: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
             --negative-gradient: linear-gradient(135deg, #d00000 0%, #9d0208 100%);
-            
+
             --positive-color: #52b788;
             --neutral-color: #c77dff;
             --negative-color: #ff4d6d;
         }
 
+        *, *::before, *::after { box-sizing: border-box; }
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
-            background-image: 
+            background-image:
                 radial-gradient(circle at 15% 50%, rgba(82, 183, 136, 0.05), transparent 25%),
                 radial-gradient(circle at 85% 30%, rgba(199, 125, 255, 0.05), transparent 25%);
             color: var(--text-main);
             margin: 0;
             padding: 40px 20px;
             min-height: 100vh;
-            overflow-x: hidden;
         }
 
         header {
@@ -81,18 +82,6 @@
             cursor: pointer;
             backdrop-filter: blur(10px);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .filter-btn::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 30px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: -1;
         }
 
         .filter-btn:hover {
@@ -111,11 +100,10 @@
         .filter-btn[data-target="Neutral"].active { background: var(--neutral-gradient); }
         .filter-btn[data-target="Negative"].active { background: var(--negative-gradient); }
 
-        /* Dashboard Surface */
+        /* Dashboard */
         .dashboard-wrapper {
             max-width: 1200px;
             margin: 0 auto;
-            position: relative;
         }
 
         .aspect-grid {
@@ -125,15 +113,12 @@
             animation: fadeIn 0.4s ease-out forwards;
         }
 
-        .aspect-grid.active {
-            display: grid;
-        }
+        .aspect-grid.active { display: grid; }
 
-        /* Aspect Card Glassmorphism */
+        /* Aspect Card */
         .aspect-card {
             background: var(--surface-color);
             backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-color);
             border-radius: 20px;
             padding: 25px;
@@ -150,7 +135,6 @@
             top: 0; left: 0; width: 4px; height: 100%;
         }
 
-        /* Card theme variants */
         #Positive .aspect-card::after { background-color: var(--positive-color); }
         #Neutral .aspect-card::after { background-color: var(--neutral-color); }
         #Negative .aspect-card::after { background-color: var(--negative-color); }
@@ -162,7 +146,6 @@
             border-color: rgba(255, 255, 255, 0.2);
         }
 
-        /* Card Header */
         .card-header {
             display: flex;
             justify-content: space-between;
@@ -178,7 +161,6 @@
             color: #fff;
             text-transform: capitalize;
             margin: 0;
-            line-height: 1.2;
         }
 
         .aspect-count {
@@ -189,12 +171,8 @@
             font-size: 0.85em;
             font-weight: 600;
             font-family: 'Outfit', sans-serif;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
         }
 
-        /* Products List */
         .products-section {
             display: flex;
             flex-direction: column;
@@ -203,7 +181,7 @@
         }
 
         .products-label {
-            font-size: 0.85em;
+            font-size: 0.8em;
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--text-muted);
@@ -211,31 +189,90 @@
             font-weight: 600;
         }
 
+        /* Clickable Product Tag */
         .product-tag {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 8px 12px;
-            border-radius: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
             font-size: 0.9em;
             color: #ced4da;
-            transition: background 0.2s;
+            cursor: pointer;
+            transition: all 0.25s ease;
             display: flex;
             align-items: center;
+            gap: 8px;
+            user-select: none;
         }
 
-        .product-tag::before {
-            content: '•';
-            margin-right: 8px;
+        .product-tag .arrow {
+            margin-left: auto;
+            font-size: 0.75em;
             color: var(--text-muted);
+            transition: transform 0.25s ease;
         }
 
-        #Positive .product-tag::before { color: var(--positive-color); }
-        #Neutral .product-tag::before { color: var(--neutral-color); }
-        #Negative .product-tag::before { color: var(--negative-color); }
+        .product-tag.expanded .arrow {
+            transform: rotate(90deg);
+        }
+
+        .product-tag .dot {
+            flex-shrink: 0;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        #Positive .product-tag .dot { background: var(--positive-color); }
+        #Neutral .product-tag .dot { background: var(--neutral-color); }
+        #Negative .product-tag .dot { background: var(--negative-color); }
 
         .product-tag:hover {
             background: rgba(255, 255, 255, 0.08);
             color: #fff;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Review Panel (hidden by default) */
+        .review-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 10px;
+            margin-top: 0;
+            border-left: 3px solid transparent;
+        }
+
+        .review-panel.open {
+            max-height: 600px;
+            opacity: 1;
+            padding: 14px 16px;
+            margin-top: 6px;
+            overflow-y: auto;
+        }
+
+        #Positive .review-panel { border-left-color: var(--positive-color); }
+        #Neutral .review-panel { border-left-color: var(--neutral-color); }
+        #Negative .review-panel { border-left-color: var(--negative-color); }
+
+        .review-panel .review-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.88em;
+            color: #adb5bd;
+            line-height: 1.6;
+        }
+
+        .review-panel .review-item:last-child { border-bottom: none; }
+
+        .review-panel .review-label {
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
         }
 
         /* Empty State */
@@ -252,18 +289,15 @@
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.98); }
             to { opacity: 1; transform: scale(1); }
         }
 
-        /* Responsiveness */
         @media (max-width: 768px) {
             h1 { font-size: 2.5em; }
             .aspect-grid { grid-template-columns: 1fr; }
@@ -275,7 +309,7 @@
 
     <header>
         <h1>Sentiment Aspect Dashboard</h1>
-        <p class="subtitle">An interactive exploration of product features evaluated by user reviews, extracted via localized Natural Language Processing.</p>
+        <p class="subtitle">Click on any product name to reveal the full review text.</p>
     </header>
 
     <div class="filter-container">
@@ -285,94 +319,66 @@
     </div>
 
     <div class="dashboard-wrapper">
-        
-        <!-- POSITIVE TAB -->
-        <div id="Positive" class="aspect-grid active">
-            {% if top_aspects['Positive']|length > 0 %}
-                {% for aspect_obj in top_aspects['Positive'] %}
-                <div class="aspect-card">
-                    <div class="card-header">
-                        <h3 class="aspect-title">{{ aspect_obj.aspect }}</h3>
-                        <span class="aspect-count">{{ aspect_obj.count }} Mentions</span>
-                    </div>
-                    <div class="products-section">
-                        <div class="products-label">Top Referenced Products</div>
-                        {% for prod in aspect_obj.products %}
-                            <div class="product-tag">{{ prod }}</div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state">No Positive Aspects Found.</div>
-            {% endif %}
-        </div>
 
-        <!-- NEUTRAL TAB -->
-        <div id="Neutral" class="aspect-grid">
-            {% if top_aspects['Neutral']|length > 0 %}
-                {% for aspect_obj in top_aspects['Neutral'] %}
+        {% for sentiment in ['Positive', 'Neutral', 'Negative'] %}
+        <div id="{{ sentiment }}" class="aspect-grid {{ 'active' if sentiment == 'Positive' else '' }}">
+            {% if top_aspects[sentiment]|length > 0 %}
+                {% for aspect_obj in top_aspects[sentiment] %}
                 <div class="aspect-card">
                     <div class="card-header">
                         <h3 class="aspect-title">{{ aspect_obj.aspect }}</h3>
                         <span class="aspect-count">{{ aspect_obj.count }} Mentions</span>
                     </div>
                     <div class="products-section">
-                        <div class="products-label">Top Referenced Products</div>
+                        <div class="products-label">Top Products &#8212; Click to see reviews</div>
                         {% for prod in aspect_obj.products %}
-                            <div class="product-tag">{{ prod }}</div>
+                            <div class="product-tag" onclick="toggleReview(this)">
+                                <span class="dot"></span>
+                                <span class="prod-name">{{ prod.name }}</span>
+                                <span class="arrow">&#9654;</span>
+                            </div>
+                            <div class="review-panel">
+                                {% for review in prod.reviews %}
+                                <div class="review-item">
+                                    <div class="review-label">Review {{ loop.index }}</div>
+                                    {{ review }}
+                                </div>
+                                {% endfor %}
+                            </div>
                         {% endfor %}
                     </div>
                 </div>
                 {% endfor %}
             {% else %}
-                <div class="empty-state">No Neutral Aspects Found.</div>
+                <div class="empty-state">No {{ sentiment }} Aspects Found.</div>
             {% endif %}
         </div>
-
-        <!-- NEGATIVE TAB -->
-        <div id="Negative" class="aspect-grid">
-            {% if top_aspects['Negative']|length > 0 %}
-                {% for aspect_obj in top_aspects['Negative'] %}
-                <div class="aspect-card">
-                    <div class="card-header">
-                        <h3 class="aspect-title">{{ aspect_obj.aspect }}</h3>
-                        <span class="aspect-count">{{ aspect_obj.count }} Mentions</span>
-                    </div>
-                    <div class="products-section">
-                        <div class="products-label">Top Referenced Products</div>
-                        {% for prod in aspect_obj.products %}
-                            <div class="product-tag">{{ prod }}</div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state">No Negative Aspects Found.</div>
-            {% endif %}
-        </div>
+        {% endfor %}
 
     </div>
 
     <script>
         function switchTab(targetId) {
-            // Update buttons
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                if (btn.getAttribute('data-target') === targetId) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
+                btn.classList.toggle('active', btn.getAttribute('data-target') === targetId);
             });
-
-            // Update grids
             document.querySelectorAll('.aspect-grid').forEach(grid => {
-                if (grid.id === targetId) {
-                    grid.classList.add('active');
-                } else {
-                    grid.classList.remove('active');
-                }
+                grid.classList.toggle('active', grid.id === targetId);
             });
+        }
+
+        function toggleReview(el) {
+            const panel = el.nextElementSibling;
+            const isOpen = panel.classList.contains('open');
+
+            // Close all panels inside same card
+            el.closest('.products-section').querySelectorAll('.review-panel').forEach(p => p.classList.remove('open'));
+            el.closest('.products-section').querySelectorAll('.product-tag').forEach(t => t.classList.remove('expanded'));
+
+            if (!isOpen) {
+                panel.classList.add('open');
+                el.classList.add('expanded');
+            }
         }
     </script>
 </body>
