@@ -32,12 +32,18 @@ class SentimentAnalysisBERT:
         self.label_encoder = LabelEncoder()
         self.class_names = ['Negative', 'Neutral', 'Positive']
         self.max_len = 256
-        self.batch_size = 16
+        self.batch_size = 12
         
         if model_path:
             self.load_model(model_path)
 
-    def train(self, data, epochs: int = 3, learning_rate: float = 2e-5) -> float:
+    def train(
+        self,
+        data,
+        epochs: int = 4,
+        learning_rate: float = 2e-5,
+        warmup_ratio: float = 0.12,
+    ) -> float:
         """Train BERT model for sentiment analysis using TensorFlow"""
         self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
@@ -64,7 +70,8 @@ class SentimentAnalysisBERT:
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.model = TFBertForSequenceClassification.from_pretrained(
             'bert-base-uncased',
-            num_labels=3
+            num_labels=3,
+            from_pt=True,
         )
         print("BERT model loaded!")
 
@@ -96,8 +103,8 @@ class SentimentAnalysisBERT:
         optimizer, lr_schedule = create_optimizer(
             init_lr=learning_rate,
             num_train_steps=num_train_steps,
-            num_warmup_steps=int(0.1 * num_train_steps),
-            weight_decay_rate=0.01,
+            num_warmup_steps=max(1, int(warmup_ratio * num_train_steps)),
+            weight_decay_rate=0.02,
         )
 
         # Compile model

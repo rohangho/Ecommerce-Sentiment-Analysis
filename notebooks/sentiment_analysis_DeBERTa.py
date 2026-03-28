@@ -10,14 +10,14 @@ from transformers import AutoTokenizer, TFAutoModelForSequenceClassification, cr
 import CapstoneData
 
 
-class SentimentAnalysisHF:
+class SentimentAnalysisDeBERTa:
     """
-    RoBERTa (large) sequence classifier fine-tuned on the project 3-way labels:
-    Negative, Neutral, Positive. Uses a fresh 3-class head (ignore_mismatched_sizes).
+    DeBERTa (microsoft/deberta-v3-base) sequence classifier fine-tuned on the project
+    3-way labels: Negative, Neutral, Positive. Fresh 3-class head (ignore_mismatched_sizes).
     """
 
     def __init__(self, model_path: str | None = None):
-        self.model_name = "roberta-large"
+        self.model_name = "microsoft/deberta-v3-base"
         self.max_len = 256
         self.batch_size = 4
         self.label_encoder = LabelEncoder()
@@ -54,8 +54,8 @@ class SentimentAnalysisHF:
         self,
         data,
         epochs: int = 3,
-        learning_rate: float = 1.7e-5,
-        warmup_ratio: float = 0.14,
+        learning_rate: float = 2e-5,
+        warmup_ratio: float = 0.12,
         weight_decay: float = 0.02,
     ) -> float:
         """Fine-tune on downstream 3-class sentiment (reviews + titles)."""
@@ -80,7 +80,7 @@ class SentimentAnalysisHF:
         )
 
         print(
-            f"Fine-tuning RoBERTa: train={len(texts_train)}, val={len(texts_val)}, "
+            f"Fine-tuning DeBERTa: train={len(texts_train)}, val={len(texts_val)}, "
             f"labels={self.class_names}"
         )
 
@@ -180,7 +180,7 @@ class SentimentAnalysisHF:
             return False
         try:
             os.makedirs(os.path.dirname(model_path) or ".", exist_ok=True)
-            model_dir = model_path.replace(".pkl", "_hf_tf")
+            model_dir = model_path.replace(".pkl", "_deberta_tf")
             self.model.save_pretrained(model_dir)
             self.tokenizer.save_pretrained(model_dir)
             metadata = {

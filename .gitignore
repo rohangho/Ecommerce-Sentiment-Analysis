@@ -75,7 +75,7 @@ docs/_build/
 target/
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # IPython
 profile_default/
@@ -171,3 +171,36 @@ personal_update/outputs/
 models/bert/
 models/deberta/
 ~$*.xlsx
+
+# Training / validation pipeline outputs (train_and_validate.py, validate_deploy_models.py)
+deploy_models/
+validation_outputs/
+
+# Hugging Face hub cache if pointed at the repo root
+.huggingface/
+
+# Experiment tracking & ML tooling
+wandb/
+mlruns/
+lightning_logs/
+runs/
+tensorboard_logs/
+.neptune/
+
+# Linters / formatters
+.ruff_cache/
+
+# PyTorch / ad-hoc weight files (regenerated locally)
+*.pt
+*.pth
+*.ckpt
+
+# Editor swap / backup
+*.swp
+*~
+Thumbs.db
+
+# Local env files (extra variants)
+.env.local
+.env.*.local
+*.pem

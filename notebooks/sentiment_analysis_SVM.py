@@ -21,7 +21,7 @@ class SentimentAnalysisSVM:
         if model_path:
             self.load_model(model_path)
 
-    def train(self, data, kernel: str = 'rbf', C: float = 1.0) -> float:
+    def train(self, data, kernel: str = 'rbf', C: float = 2.5) -> float:
         """
         Train SVM model for sentiment analysis
         
@@ -40,8 +40,10 @@ class SentimentAnalysisSVM:
         X = self.train_data.df[['brand', 'categories', 'primaryCategories', 'reviews.text', 'reviews.title']]
         y = self.train_data.df['sentiment']
 
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        # Split data (stratify for minority Neutral / Negative)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
 
         print(f"Training set size: {len(X_train)}")
         print(f"Test set size: {len(X_test)}")
@@ -51,9 +53,27 @@ class SentimentAnalysisSVM:
 
         preprocessor = ColumnTransformer(
             transformers=[
-                ('text', TfidfVectorizer(max_features=10000, ngram_range=(1, 2)), 'reviews.text'),
-                ('title', TfidfVectorizer(max_features=3000, ngram_range=(1, 2)), 'reviews.title'),
-                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
+                (
+                    'text',
+                    TfidfVectorizer(
+                        max_features=16000,
+                        ngram_range=(1, 2),
+                        min_df=2,
+                        sublinear_tf=True,
+                    ),
+                    'reviews.text',
+                ),
+                (
+                    'title',
+                    TfidfVectorizer(
+                        max_features=5000,
+                        ngram_range=(1, 2),
+                        min_df=2,
+                        sublinear_tf=True,
+                    ),
+                    'reviews.title',
+                ),
+                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
             ]
         )
 
@@ -67,7 +87,7 @@ class SentimentAnalysisSVM:
                 class_weight='balanced',
                 probability=True,  # Enable probability estimates
                 random_state=42,
-                verbose=1  # Show training progress
+                verbose=0
             ))
         ])
 

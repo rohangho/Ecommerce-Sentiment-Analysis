@@ -14,6 +14,7 @@ from tensorflow.keras.layers import Embedding, LSTM, Dense, Dropout, Concatenate
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.utils import to_categorical
 import warnings
 warnings.filterwarnings('ignore')
@@ -36,9 +37,9 @@ class SentimentAnalysisRNN:
 
         self.model = None
         self.tokenizer = None
-        self.max_len = 200
-        self.vocab_size = 10000
-        self.embedding_dim = 128
+        self.max_len = 256
+        self.vocab_size = 15000
+        self.embedding_dim = 192
         self.categorical_encoders = {}
         self.class_names = ['Negative', 'Neutral', 'Positive']
         self.label_encoder = LabelEncoder()
@@ -46,7 +47,7 @@ class SentimentAnalysisRNN:
         if model_path:
             self.load_model(model_path)
 
-    def train(self, data, epochs: int = 10, batch_size: int = 32) -> float:
+    def train(self, data, epochs: int = 24, batch_size: int = 32) -> float:
         self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
 
@@ -62,6 +63,8 @@ class SentimentAnalysisRNN:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y_categorical, test_size=0.2, random_state=42, stratify=y_encoded
         )
+        X_train = X_train.copy()
+        X_test = X_test.copy()
 
         # Prepare text data
         text_data = X_train['reviews.text'].fillna('').astype(str) + ' ' + X_train['reviews.title'].fillna('').astype(str)
@@ -100,27 +103,44 @@ class SentimentAnalysisRNN:
         # Build RNN model
         self.model = Sequential([
             Embedding(input_dim=self.vocab_size, output_dim=self.embedding_dim, input_length=self.max_len),
-            LSTM(128, return_sequences=True, dropout=0.2),
-            LSTM(64, dropout=0.2),
-            Dense(64, activation='relu'),
-            Dropout(0.3),
-            Dense(32, activation='relu'),
-            Dropout(0.2),
+            LSTM(96, return_sequences=True, dropout=0.25),
+            LSTM(72, dropout=0.25),
+            Dense(72, activation='relu'),
+            Dropout(0.35),
+            Dense(40, activation='relu'),
+            Dropout(0.22),
             Dense(3, activation='softmax')  # 3 classes: Negative, Neutral, Positive
         ])
 
         self.model.compile(
-            optimizer=Adam(learning_rate=0.001),
+            optimizer=Adam(learning_rate=8e-4),
             loss='categorical_crossentropy',
             metrics=['accuracy']
         )
+
+        callbacks = [
+            EarlyStopping(
+                monitor='val_loss',
+                patience=5,
+                restore_best_weights=True,
+                verbose=1,
+            ),
+            ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=0.45,
+                patience=2,
+                min_lr=1e-6,
+                verbose=1,
+            ),
+        ]
 
         # Train model
         self.model.fit(
             X_train_padded, y_train,
             epochs=epochs,
             batch_size=batch_size,
-            validation_split=0.1,
+            validation_split=0.12,
+            callbacks=callbacks,
             verbose=1
         )
 

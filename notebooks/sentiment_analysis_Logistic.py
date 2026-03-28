@@ -29,23 +29,53 @@ class SentimentAnalysis:
         X = self.train_data.df[['brand', 'categories', 'primaryCategories', 'reviews.text', 'reviews.title']]
         y = self.train_data.df['sentiment']
 
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        # Split data (stratify — dataset is imbalanced toward Positive)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
 
         categorical_features = ['brand', 'categories', 'primaryCategories']
 
         preprocessor = ColumnTransformer(
             transformers=[
-                ('text', TfidfVectorizer(max_features=10000), 'reviews.text'),
-                ('title', TfidfVectorizer(max_features=3000), 'reviews.title'),
-                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
+                (
+                    'text',
+                    TfidfVectorizer(
+                        max_features=14000,
+                        ngram_range=(1, 2),
+                        min_df=2,
+                        sublinear_tf=True,
+                    ),
+                    'reviews.text',
+                ),
+                (
+                    'title',
+                    TfidfVectorizer(
+                        max_features=4500,
+                        ngram_range=(1, 2),
+                        min_df=2,
+                        sublinear_tf=True,
+                    ),
+                    'reviews.title',
+                ),
+                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
             ]
         )
 
         # Pipeline with Logistic Regression
         self.model = Pipeline([
             ('preprocess', preprocessor),
-            ('classifier', LogisticRegression(max_iter=1000, random_state=42, class_weight="balanced"))
+            (
+                'classifier',
+                LogisticRegression(
+                    max_iter=4000,
+                    random_state=42,
+                    class_weight='balanced',
+                    C=0.85,
+                    solver='saga',
+                    n_jobs=-1,
+                ),
+            ),
         ])
 
         self.model.fit(X_train, y_train)
@@ -71,7 +101,7 @@ class SentimentAnalysis:
 
     def preprocess_data(self) -> None:
         if self.train_data.df is not None:
-            self.train_data.remove_nulls(columns=['name', 'reviews.title', 'reviews.text', 'sentiment'])
+            self.train_data.remove_nulls(columns=['reviews.title', 'reviews.text', 'sentiment'])
             self.train_data.get_summary()
         else:
             print("Data not loaded. Cannot preprocess.")

@@ -16,7 +16,6 @@ from transformers import (
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, f1_score, accuracy_score
-from sklearn.utils.class_weight import compute_class_weight
 import joblib
 
 # Suppress warnings
@@ -39,8 +38,8 @@ class SentimentAnalysisDistilBERT:
             print("GPU not found, using CPU.")
 
         self.model_name = 'distilbert-base-uncased'
-        self.max_length = 128
-        self.batch_size = 16
+        self.max_length = 256
+        self.batch_size = 12
         self.label_names = ['Negative', 'Neutral', 'Positive']
         self.label_map = {'Negative': 0, 'Neutral': 1, 'Positive': 2}
         
@@ -86,7 +85,7 @@ class SentimentAnalysisDistilBERT:
         
         return dataset.batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
 
-    def train(self, data, epochs: int = 4, learning_rate: float = 2e-5) -> float:
+    def train(self, data, epochs: int = 4, learning_rate: float = 2e-5, warmup_ratio: float = 0.12) -> float:
         """Full training pipeline for DistilBERT."""
         self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
@@ -106,19 +105,11 @@ class SentimentAnalysisDistilBERT:
             stratify=df['label'].values
         )
 
-        # Class weights
-        class_weights = compute_class_weight(
-            class_weight='balanced',
-            classes=np.array([0, 1, 2]),
-            y=train_labels
-        )
-        class_weights_dict = {i: w for i, w in enumerate(class_weights)}
-
         # Datasets
         train_ds = self.get_tf_dataset(train_texts, train_labels, shuffle=True)
         val_ds   = self.get_tf_dataset(val_texts,   val_labels)
 
-        # Model — from_pt=True loads PyTorch .bin weights (avoids safetensors/TF incompatibility)
+        # from_pt=True: Hub ships safetensors; PyTorch+safetensors needed to materialize TF weights
         self.model = TFDistilBertForSequenceClassification.from_pretrained(
             self.model_name, num_labels=3, from_pt=True
         )
@@ -128,8 +119,8 @@ class SentimentAnalysisDistilBERT:
         optimizer, lr_schedule = create_optimizer(
             init_lr=learning_rate,
             num_train_steps=num_train_steps,
-            num_warmup_steps=int(0.1 * num_train_steps),
-            weight_decay_rate=0.01,
+            num_warmup_steps=max(1, int(warmup_ratio * num_train_steps)),
+            weight_decay_rate=0.02,
         )
 
         # Compile
@@ -141,12 +132,8 @@ class SentimentAnalysisDistilBERT:
 
         # Train
         print(f"Starting training for {epochs} epochs...")
-        self.model.fit(
-            train_ds,
-            validation_data=val_ds,
-            epochs=epochs,
-            class_weight=class_weights_dict
-        )
+        # class_weight is not applied reliably with tf.data.Dataset in Keras 3
+        self.model.fit(train_ds, validation_data=val_ds, epochs=epochs)
 
         # Evaluate
         loss, accuracy = self.model.evaluate(val_ds)
@@ -220,7 +207,7 @@ class SentimentAnalysisDistilBERT:
             if os.path.exists(model_path):
                 metadata = joblib.load(model_path)
                 model_dir = metadata['model_dir']
-                self.max_length = metadata.get('max_length', 128)
+                self.max_length = metadata.get('max_length', 256)
                 self.label_names = metadata.get('label_names', ['Negative', 'Neutral', 'Positive'])
 
                 self.model = TFDistilBertForSequenceClassification.from_pretrained(model_dir)
