@@ -22,6 +22,18 @@ import CapstoneData
 
 class SentimentAnalysisRNN:
     def __init__(self, model_path: Optional[str] = None):
+        # TensorFlow Metal configuration
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            try:
+                for gpu in gpus:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+                print(f"Using GPU: {gpus}")
+            except RuntimeError as e:
+                print(e)
+        else:
+            print("GPU not found, using CPU.")
+
         self.model = None
         self.tokenizer = None
         self.max_len = 200
@@ -34,8 +46,8 @@ class SentimentAnalysisRNN:
         if model_path:
             self.load_model(model_path)
 
-    def train(self, train_path: str, epochs: int = 10, batch_size: int = 32) -> float:
-        self.train_data = CapstoneData.DataExploration(train_path)
+    def train(self, data, epochs: int = 10, batch_size: int = 32) -> float:
+        self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
 
         # Features and target
@@ -206,20 +218,26 @@ class SentimentAnalysisRNN:
                 print("Model not loaded. Please load or train the model first.")
                 return "Model not available"
 
-# Example usage
-#sa = SentimentAnalysisRNN()
-#acc = sa.train('../Capstone/Ecommerce-Sentiment-Analysis/Ecommerce_dataset/train_data.csv', epochs=10)
-#print("Accuracy:", acc)
-#sa.persistModel('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_RNN.pkl')
-
-#prediction = sa.predict(
-#    "It's a great product for a thrift store, not for someone who wants a quality product.",
-#    "Review of Amazon Echo Show",
-#    "Amazon",
-#    "Electronics",
-#    "Smart Speakers"
-#)
-#print("Prediction:", prediction)
-
-#loaded_model = SentimentAnalysisRNN('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_RNN.pkl')
-#print(loaded_model.predict("It's a great product for a thrift store, not for someone who wants a quality product.", "Review of Amazon Echo Show", "Amazon", "Electronics", "Smart Speakers"))
+if __name__ == "__main__":
+    # Example: How to use the model WITHOUT retraining
+    # 1. Path to your saved metadata .pkl file
+    model_path = 'sentiment_model_RNN.pkl'
+    
+    if os.path.exists(model_path):
+        sa = SentimentAnalysisRNN(model_path=model_path)
+        print("Model loaded successfully!")
+        
+        # 2. Predict sentiment for a new review
+        review_text = "It's a great product for a thrift store, but not for quality lovers."
+        review_title = "Average quality"
+        
+        prediction = sa.predict(review_text, review_title)
+        print(f"Review: {review_text}")
+        print(f"Prediction: {prediction}")
+    else:
+        print(f"Model file {model_path} not found. Train first using sa.train().")
+        
+        # Example Training (if starting from scratch):
+        # sa = SentimentAnalysisRNN()
+        # sa.train('Ecommerce_dataset/train_data.csv', epochs=10)
+        # sa.persistModel('sentiment_model_RNN.pkl')

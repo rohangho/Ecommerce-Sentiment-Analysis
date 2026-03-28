@@ -1,19 +1,3 @@
-.venv/
-venv/
-env/
-ENV/
-build/
-dist/
-*.egg-info/
-lib/
-lib64/
-__pycache__/
-*.py[cod]
-*$py.class
-.ipynb_checkpoints/
-.DS_Store
-personal_update/outputs/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -43,8 +27,7 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller
-#  Usually these files are written by a python script, and contain the bin binary
-#  for a standalone executable
+#  Usually these files are written by a python script, and contain the exe data
 *.manifest
 *.spec
 
@@ -55,10 +38,7 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
-.noserc
-.pytest_cache/
-v环/
-v环.bak/
+.nox/
 .coverage
 .coverage.*
 .cache
@@ -102,25 +82,28 @@ profile_default/
 ipython_config.py
 
 # pyenv
-#   For a library or package, you might want to ignore these files since the Python version
-#   is managed by the end user.
+#   For a library or package, you might want to ignore these files since the Python version is
+#   controlled by the user.
 # .python-version
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
 #   However, in case of collaboration, if having platform-specific dependencies or dependencies
 #   having no cross-platform support, pipenv may install dependencies that don't work, or even
-#   fail to install.
+#   fail all together. If that's the case, un-comment next line.
 #Pipfile.lock
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#   Anyway, if a collaboration is intended, and there are some issues with dependency resolution
+#   or platform-specific dependencies, un-comment next line.
 #poetry.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
 #pdm.lock
+#   pdm build plugins may create a local .pdm-python-sets.txt
+.pdm-python-sets.txt
 
 # PEP 582; used by e.g. github.com/pdm-project/pdm
 __pypackages__/
@@ -165,16 +148,26 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# OS-specific files
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
 .DS_Store
-.DS_Store?
+.AppleDouble
+.LSOverride
+Icon
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
-Thumbs.db
+Attributes
+Temporary Items
+.apdisk
 
-# Large model weights (Hugging Face / BERT)
-sentiment_model_BERT_bert/
-\n.env
-
+# Project specific
+personal_update/outputs/
+models/bert/
+models/deberta/
+~$*.xlsx

@@ -21,19 +21,19 @@ class SentimentAnalysisSVM:
         if model_path:
             self.load_model(model_path)
 
-    def train(self, train_path: str, kernel: str = 'rbf', C: float = 1.0) -> float:
+    def train(self, data, kernel: str = 'rbf', C: float = 1.0) -> float:
         """
         Train SVM model for sentiment analysis
         
         Args:
-            train_path: Path to training data CSV
+            data: Path to CSV or pandas DataFrame
             kernel: Kernel type ('linear', 'rbf', 'poly', 'sigmoid')
             C: Regularization parameter (lower = stronger regularization)
         
         Returns:
             Accuracy score on test set
         """
-        self.train_data = CapstoneData.DataExploration(train_path)
+        self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
 
         # Features and target
@@ -174,30 +174,26 @@ class SentimentAnalysisSVM:
             print("Model not loaded. Please load or train the model first.")
             return "Model not available"
 
-# Example usage
-#sa = SentimentAnalysisSVM()
-#acc = sa.train(
-#    '../Capstone/Ecommerce-Sentiment-Analysis/Ecommerce_dataset/train_data.csv',
-#    kernel='rbf',
-#    C=1.0
-#)
-#print(f"Final Accuracy: {acc:.4f}")
-#sa.persistModel('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_SVM.pkl')
-
-#prediction = sa.predict(
-#    "It's a great product for a thrift store, not for someone who wants a quality product.",
-#    "Review of Amazon Echo Show",
-#    "Amazon",
-#    "Electronics",
-#    "Smart Speakers"
-#)
-#print(f"Prediction: {prediction}")
-
-
-loaded_model = SentimentAnalysisSVM('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_SVM.pkl')
-print(loaded_model.predict("It's a great product for a thrift store, not for someone who wants a quality product.",
-    "Review of Amazon Echo Show",
-    "Amazon",
-    "Electronics",
-    "Smart Speakers"
-))
+if __name__ == "__main__":
+    # Example: How to use the model WITHOUT retraining
+    # 1. Path to your saved .pkl model file
+    model_path = 'sentiment_model_SVM.pkl'
+    
+    if os.path.exists(model_path):
+        sa = SentimentAnalysisSVM(model_path=model_path)
+        print("Model loaded successfully!")
+        
+        # 2. Predict sentiment for a new review
+        review_text = "Highly recommended, great build quality and value."
+        review_title = "Excellent value"
+        
+        prediction = sa.predict(review_text, review_title)
+        print(f"Review: {review_text}")
+        print(f"Prediction: {prediction}")
+    else:
+        print(f"Model file {model_path} not found. Train first using sa.train().")
+        
+        # Example Training (if starting from scratch):
+        # sa = SentimentAnalysisSVM()
+        # sa.train('Ecommerce_dataset/train_data.csv')
+        # sa.persistModel('sentiment_model_SVM.pkl')

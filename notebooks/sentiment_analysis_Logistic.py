@@ -21,8 +21,8 @@ class SentimentAnalysis:
         if model_path:
             self.load_model(model_path)
 
-    def train(self, train_path: str) -> float:
-        self.train_data = CapstoneData.DataExploration(train_path)
+    def train(self, data) -> float:
+        self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
 
         # Features and target
@@ -104,19 +104,26 @@ class SentimentAnalysis:
                 print("Model not loaded. Please load or train the model first.")
                 return "Model not available"
 
-# Example usage
-#sa = SentimentAnalysis()
-#acc = sa.train('../Capstone/Ecommerce-Sentiment-Analysis/Ecommerce_dataset/train_data.csv')
-#print("Accuracy:", acc)
-#sa.persistModel('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_TFD_LR.pkl')
-
-#sample = pd.DataFrame([{
-#    "reviews.text": "It's a great product for a thrift store, not for someone who wants a quality product.",
-#    "reviews.title": "Review of Amazon Echo Show Alexa-enabled Bluetooth Speaker with 7\" Screen - Charcoal",
-#    "brand": "Unknown",
-#    "categories": "General",
-#    "primaryCategories": "General"
-#}])
-
-#loaded_model = SentimentAnalysis('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_TFD_LR.pkl')
-#print(loaded_model.model.predict(sample))
+if __name__ == "__main__":
+    # Example: How to use the model WITHOUT retraining
+    # 1. Provide the path to your saved .pkl model file
+    model_path = 'sentiment_model_TFD_LR.pkl'
+    
+    if os.path.exists(model_path):
+        sa = SentimentAnalysis(model_path=model_path)
+        print("Model loaded successfully!")
+        
+        # 2. Predict sentiment for a new review
+        review_text = "Good product but the battery life is quite short."
+        review_title = "Mixed feelings"
+        
+        prediction = sa.predict(review_text, review_title)
+        print(f"Review: {review_text}")
+        print(f"Prediction: {prediction}")
+    else:
+        print(f"Model file {model_path} not found. Please train the model first.")
+        
+        # Example Training (if starting from scratch):
+        # sa = SentimentAnalysis()
+        # sa.train('Ecommerce_dataset/train_data.csv')
+        # sa.persistModel('sentiment_model_TFD_LR.pkl')
