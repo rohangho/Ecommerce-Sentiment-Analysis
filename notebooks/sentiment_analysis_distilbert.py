@@ -130,10 +130,23 @@ class SentimentAnalysisDistilBERT:
             metrics=['accuracy']
         )
 
+        # Compute class weights
+        from sklearn.utils.class_weight import compute_class_weight
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(df['label'].values),
+            y=df['label'].values
+        )
+        class_weight_dict = dict(enumerate(class_weights))
+
         # Train
         print(f"Starting training for {epochs} epochs...")
-        # class_weight is not applied reliably with tf.data.Dataset in Keras 3
-        self.model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+        self.model.fit(
+            train_ds, 
+            validation_data=val_ds, 
+            epochs=epochs,
+            class_weight=class_weight_dict
+        )
 
         # Evaluate
         loss, accuracy = self.model.evaluate(val_ds)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import joblib
+import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -136,11 +137,21 @@ class SentimentAnalysisDeBERTa:
             metrics=["accuracy"],
         )
 
+        # Compute class weights
+        from sklearn.utils.class_weight import compute_class_weight
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(y_encoded),
+            y=y_encoded
+        )
+        class_weight_dict = dict(enumerate(class_weights))
+
         print(f"Starting fine-tuning ({epochs} epochs)...")
         self.model.fit(
             train_ds,
             validation_data=val_ds,
             epochs=epochs,
+            class_weight=class_weight_dict
         )
         _, acc = self.model.evaluate(val_ds, verbose=0)
         print(f"Validation accuracy: {acc:.4f}")

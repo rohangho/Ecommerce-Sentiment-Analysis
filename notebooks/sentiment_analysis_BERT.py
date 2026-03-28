@@ -114,12 +114,22 @@ class SentimentAnalysisBERT:
             metrics=['accuracy']
         )
 
+        # Compute class weights
+        from sklearn.utils.class_weight import compute_class_weight
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(y_encoded),
+            y=y_encoded
+        )
+        class_weight_dict = dict(enumerate(class_weights))
+
         # Training
         print("Starting training...")
         self.model.fit(
             train_dataset,
             validation_data=test_dataset,
-            epochs=epochs
+            epochs=epochs,
+            class_weight=class_weight_dict
         )
 
         # Final evaluation

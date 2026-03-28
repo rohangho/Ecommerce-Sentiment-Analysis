@@ -134,6 +134,15 @@ class SentimentAnalysisRNN:
             ),
         ]
 
+        # Compute class weights
+        from sklearn.utils.class_weight import compute_class_weight
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(y_encoded),
+            y=y_encoded
+        )
+        class_weight_dict = dict(enumerate(class_weights))
+
         # Train model
         self.model.fit(
             X_train_padded, y_train,
@@ -141,6 +150,7 @@ class SentimentAnalysisRNN:
             batch_size=batch_size,
             validation_split=0.12,
             callbacks=callbacks,
+            class_weight=class_weight_dict,
             verbose=1
         )
 
