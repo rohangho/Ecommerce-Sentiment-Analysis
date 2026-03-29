@@ -37,7 +37,7 @@ def load_resources():
     sentiment_model = SentimentAnalysisDeBERTa(model_path=MODEL_PKL)
     
     # 2. Topic Model
-    topic_model = BERTopic.load(BERTOPIC_MODEL_PATH)
+    topic_model = BERTopic.load(BERTOPIC_MODEL_PATH, embedding_model="all-MiniLM-L6-v2")
     
     # 3. Data
     if os.path.exists(DATA_PATH):
