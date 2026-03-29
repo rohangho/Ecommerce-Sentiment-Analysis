@@ -15,13 +15,13 @@ except ImportError:
     _HAS_IPYTHON = False
 
 # Import all model classes
-from .sentiment_analysis_Logistic import SentimentAnalysis
-from .sentiment_analysis_SVM import SentimentAnalysisSVM
-from .sentiment_analysis_RNN import SentimentAnalysisRNN
-from .sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
-from .sentiment_analysis_BERT import SentimentAnalysisBERT
-from .sentiment_analysis_Roberta import SentimentAnalysisHF
-from .sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
+from sentiment_analysis_Logistic import SentimentAnalysis
+from sentiment_analysis_SVM import SentimentAnalysisSVM
+from sentiment_analysis_RNN import SentimentAnalysisRNN
+from sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
+from sentiment_analysis_BERT import SentimentAnalysisBERT
+from sentiment_analysis_Roberta import SentimentAnalysisHF
+from sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
 
 class SentimentReporter:
     def __init__(self, output_dir="personal_update/outputs"):

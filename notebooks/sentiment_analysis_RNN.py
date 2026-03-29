@@ -19,7 +19,7 @@ from tensorflow.keras.utils import to_categorical
 import warnings
 warnings.filterwarnings('ignore')
 
-from . import CapstoneData
+import CapstoneData
 
 class SentimentAnalysisRNN:
     def __init__(self, model_path: Optional[str] = None):
@@ -61,7 +61,7 @@ class SentimentAnalysisRNN:
 
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y_categorical, test_size=0.2, random_state=42, stratify=y_encoded
+            X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
         )
         X_train = X_train.copy()
         X_test = X_test.copy()
@@ -114,7 +114,7 @@ class SentimentAnalysisRNN:
 
         self.model.compile(
             optimizer=Adam(learning_rate=8e-4),
-            loss='categorical_crossentropy',
+            loss='sparse_categorical_crossentropy',
             metrics=['accuracy']
         )
 
@@ -137,11 +137,15 @@ class SentimentAnalysisRNN:
         # Compute class weights
         from sklearn.utils.class_weight import compute_class_weight
         class_weights = compute_class_weight(
-            class_weight='balanced',
+            class_weight=None, # Replaced below
             classes=np.unique(y_encoded),
             y=y_encoded
         )
-        class_weight_dict = dict(enumerate(class_weights))
+        class_weight_dict = {
+            self.label_encoder.transform(['Negative'])[0]: 15.0,
+            self.label_encoder.transform(['Neutral'])[0]: 5.0,
+            self.label_encoder.transform(['Positive'])[0]: 1.0
+        }
 
         # Train model
         self.model.fit(

@@ -13,7 +13,7 @@ import joblib
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from . import CapstoneData
+import CapstoneData
 
 class SentimentAnalysis:
     def __init__(self, model_path: Optional[str] = None):
@@ -70,8 +70,8 @@ class SentimentAnalysis:
                 LogisticRegression(
                     max_iter=4000,
                     random_state=42,
-                    class_weight='balanced',
-                    C=0.85,
+                    class_weight={'Negative': 15.0, 'Neutral': 5.0, 'Positive': 1.0},
+                    C=2.5,
                     solver='saga',
                     n_jobs=-1,
                 ),

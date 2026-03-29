@@ -62,6 +62,8 @@ class DataExploration:
         if self.df is not None:
             initial_count = len(self.df)
             self.df.dropna(subset=columns, inplace=True)
+            if 'reviews.text' in self.df.columns:
+                self.df.drop_duplicates(subset=['reviews.text'], inplace=True)
             removed_count = initial_count - len(self.df)
             print(f"\nCleaning Complete: Removed {removed_count} rows with null values.")
             print(f"New row count: {len(self.df)}")
