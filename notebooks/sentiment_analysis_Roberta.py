@@ -18,7 +18,7 @@ class SentimentAnalysisHF:
     """
 
     def __init__(self, model_path: str | None = None):
-        self.model_name = "roberta-large"
+        self.model_name = "roberta-base"
         self.max_len = 256
         self.batch_size = 4
         self.label_encoder = LabelEncoder()
@@ -137,21 +137,11 @@ class SentimentAnalysisHF:
             metrics=["accuracy"],
         )
 
-        # Compute class weights
-        from sklearn.utils.class_weight import compute_class_weight
-        class_weights = compute_class_weight(
-            class_weight='balanced',
-            classes=np.unique(y_encoded),
-            y=y_encoded
-        )
-        class_weight_dict = dict(enumerate(class_weights))
-
         print(f"Starting fine-tuning ({epochs} epochs)...")
         self.model.fit(
             train_ds,
             validation_data=val_ds,
-            epochs=epochs,
-            class_weight=class_weight_dict
+            epochs=epochs
         )
         _, acc = self.model.evaluate(val_ds, verbose=0)
         print(f"Validation accuracy: {acc:.4f}")
