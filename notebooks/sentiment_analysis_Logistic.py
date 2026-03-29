@@ -13,7 +13,10 @@ import joblib
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import CapstoneData
+try:
+    from . import CapstoneData
+except (ImportError, ValueError):
+    import CapstoneData
 
 class SentimentAnalysis:
     def __init__(self, model_path: Optional[str] = None):

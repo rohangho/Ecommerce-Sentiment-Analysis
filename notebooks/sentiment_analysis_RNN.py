@@ -19,7 +19,10 @@ from tensorflow.keras.utils import to_categorical
 import warnings
 warnings.filterwarnings('ignore')
 
-import CapstoneData
+try:
+    from . import CapstoneData
+except (ImportError, ValueError):
+    import CapstoneData
 
 class SentimentAnalysisRNN:
     def __init__(self, model_path: Optional[str] = None):

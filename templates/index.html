@@ -3,1090 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentiment Analysis Tool</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- AG Grid CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31/dist/styles/ag-grid.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31/dist/styles/ag-theme-quartz.css">
+    <title>Sentiment & Aspect Analysis Dashboard</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --positive: #27ae60;
+            --neutral: #f39c12;
+            --negative: #e74c3c;
+            --bg: #f5f6fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .predictor-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .predictor-section textarea {
+            width: 100%;
+            height: 100px;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary);
+        }
+
+        .result-box {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+            border: 1px solid #ddd;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+            border-top: 5px solid var(--secondary);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--secondary);
+        }
+
+        .sentiment-bar {
+            height: 10px;
+            width: 100%;
+            background-color: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            margin: 1rem 0;
+        }
+
+        .bar-pos { background-color: var(--positive); height: 100%; }
+        .bar-neu { background-color: var(--neutral); height: 100%; }
+        .bar-neg { background-color: var(--negative); height: 100%; }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .product-list {
+            margin-top: 1rem;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+        }
+
+        .product-tag {
+            display: inline-block;
+            background: #edf2f7;
+            padding: 0.3rem 0.6rem;
+            margin: 0.2rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .product-tag:hover {
+            background: #cbd5e0;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 2rem;
+            width: 70%;
+            max-height: 70vh;
+            overflow-y: auto;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 1.5rem;
+            top: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .review-item {
+            border-bottom: 1px solid #eee;
+            padding: 1rem 0;
+        }
+
+        .review-sentiment {
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .pos-text { color: var(--positive); }
+        .neu-text { color: var(--neutral); }
+        .neg-text { color: var(--negative); }
+
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎯 Sentiment Analysis Tool</h1>
-            <p class="subtitle">Analyze the sentiment of your reviews and comments</p>
-        </header>
 
-        <div class="main-content">
-            <table class="model-selection-table">
-                <tr class="model-row" >
-                    <td width="2%"></td>
-                    <td width="47%">
-                        <div class="card">
-                            <h2>Step 1: Select a Model</h2>
-                            <div class="model-table-container">
-                            <table class="model-selection-table">
-                                <thead>
-                                    <tr>
-                                        <th>Model</th>
-                                        <th>Description</th>
-                                        <th>Type</th>
-                                        <th>Speed</th>
-                                        <th>Select</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr class="model-row">
-                                        <td class="model-name">🔵 Logistic Regression</td>
-                                        <td class="model-desc">Fast linear model trained on your dataset</td>
-                                        <td class="model-type">Classical ML</td>
-                                        <td class="model-speed">⚡ Very Fast</td>
-                                        <td class="model-select">
-                                            <label class="radio-label-table">
-                                                <input type="radio" name="model" value="logistic" checked>
-                                                <span class="radio-custom"></span>
-                                            </label>
-                                        </td>
-                                    </tr>
-                                    <tr class="model-row">
-                                        <td class="model-name">🤖 Pre-trained RoBERTa</td>
-                                        <td class="model-desc">Advanced transformer model from HuggingFace</td>
-                                        <td class="model-type">Deep Learning</td>
-                                        <td class="model-speed">⚡⚡ Fast</td>
-                                        <td class="model-select">
-                                            <label class="radio-label-table">
-                                                <input type="radio" name="model" value="hf">
-                                                <span class="radio-custom"></span>
-                                            </label>
-                                        </td>
-                                    </tr>
-                                    <tr class="model-row">
-                                        <td class="model-name">📊 Support Vector Machine</td>
-                                        <td class="model-desc">High-dimensional text classification</td>
-                                        <td class="model-type">Classical ML</td>
-                                        <td class="model-speed">⚡ Medium</td>
-                                        <td class="model-select">
-                                            <label class="radio-label-table">
-                                                <input type="radio" name="model" value="svm">
-                                                <span class="radio-custom"></span>
-                                            </label>
-                                        </td>
-                                    </tr>
-                                    <tr class="model-row">
-                                        <td class="model-name">🔄 Recurrent Neural Network</td>
-                                        <td class="model-desc">LSTM-based sequence learning model</td>
-                                        <td class="model-type">Deep Learning</td>
-                                        <td class="model-speed">⚡⚡⚡ Slow</td>
-                                        <td class="model-select">
-                                            <label class="radio-label-table">
-                                                <input type="radio" name="model" value="rnn">
-                                                <span class="radio-custom"></span>
-                                            </label>
-                                        </td>
-                                    </tr>
-                                    <tr class="model-row">
-                                        <td class="model-name">🧠 BERT Transformer</td>
-                                        <td class="model-desc">Pre-trained bidirectional transformer</td>
-                                        <td class="model-type">Deep Learning</td>
-                                        <td class="model-speed">⚡⚡⚡ Slow</td>
-                                        <td class="model-select">
-                                            <label class="radio-label-table">
-                                                <input type="radio" name="model" value="bert">
-                                                <span class="radio-custom"></span>
-                                            </label>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </td>
-                    <td width="2%"></td>
-                    <td width="47%">
-                        <table class="tab-table" width="100%">
-                            <tbody>
-                                <tr>
-                                    <td colspan="5" class="tab-table-content">
-                                        <div class="card">
-                                            <h2>Step 2: Choose Input Method</h2>
-                                            <div class="tab-selector">
-                                                <button type="button" class="tab-btn active" data-tab="manual">📝 Manual Entry</button>
-                                                <button type="button" class="tab-btn" data-tab="csv">📤 Upload CSV File</button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td colspan="5">
-                                        <!-- Manual Entry Mode -->
-                                        <div id="manualTab" class="card">
-                                            <table  class="tab-table-content">
-                                                <tr>
-                                                    <td width="2%"></td>
-                                                    <td width="47%"></td>
-                                                    <td width="2%"></td>
-                                                    <td width="47%"></td>
-                                                    <td width="2%"></td>
-                                                </tr>
-                                                <tr>
-                                                    <td colspan="5" class="tab-table-content">
-                                                        <h2>Enter Product Information</h2>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td></td>
-                                                    <td><label for="productInput">Product Name:</label></td>
-                                                    <td></td>
-                                                    <td><input 
-                                                            type="text" 
-                                                            id="productInput" 
-                                                            placeholder="e.g., Amazon Echo Show 7 inch"
-                                                            class="form-input"
-                                                        ></td>
-                                                    <td></td>
-                                                </tr>
-                                                <tr>
-                                                    <td></td>
-                                                    <td><label for="categoryInput">Category:</label><input 
-                                                            type="text" 
-                                                            id="categoryInput" 
-                                                            placeholder="e.g., Electronics"
-                                                            class="form-input"
-                                                        ></td>
-                                                    <td></td>
-                                                    <td><label for="primaryCategoryInput">Primary Category:</label>
-                                                    <input 
-                                                            type="text" 
-                                                            id="primaryCategoryInput" 
-                                                            placeholder="e.g., Smart Speakers"
-                                                            class="form-input"
-                                                        ></td>
-                                                    <td></td>
-                                                </tr>
-                                                <tr>
-                                                    <td></td>
-                                                    <td><label for="titleInput">Review Title:</label></td>
-                                                    <td></td>
-                                                    <td><input 
-                                                        type="text" 
-                                                        id="titleInput" 
-                                                        placeholder="e.g., Great product but pricey"
-                                                        class="form-input"
-                                                    ></td>
-                                                    <td></td>
-                                                </tr>
-                                                <tr>
-                                                    <td></td>
-                                                    <td><label for="reviewInput">Review/Comment:</label></td>
-                                                    <td></td>
-                                                    <td><textarea 
-                                                        id="reviewInput" 
-                                                        placeholder="Enter your product review, comment, or feedback..."
-                                                        rows="6"
-                                                        class="form-textarea"
-                                                        ></textarea></td>
-                                                    <td></td>
-                                                </tr>
-                                                <tr>
-                                                    <td colspan="5" class="tab-table-content"></td>
-                                                </tr>
-                                                <tr>
-                                                    <td colspan="5" class="tab-table-content"><button id="analyzeBtn" class="btn-primary">🚀 Analyze Sentiment</button></td>
-                                                </tr>
-                                            </table>
-                                        </div>
-                                        <div class="card">
-                                            <h2>Upload CSV File</h2>
-                                            <p class="helper-text">📋 Upload a CSV file with columns: name, brand, categories, primaryCategories, reviews.date, reviews.text, reviews.title</p>
-                                            
-                                            <div class="file-upload-container">
-                                                <!-- Drag and Drop Area -->
-                                                <div class="file-upload-area" id="fileUploadArea">
-                                                    <div class="file-upload-icon">📁</div>
-                                                    <p class="file-upload-text">Drag and drop your CSV file here</p>
-                                                    <p class="file-upload-subtext">or</p>
-                                                    <button type="button" class="btn-browse" id="browseBtn">
-                                                        📂 Browse Files
-                                                    </button>
-                                                    <input 
-                                                        type="file" 
-                                                        id="csvFileInput" 
-                                                        accept=".csv" 
-                                                        class="file-input"
-                                                        style="display: none;"
-                                                    >
-                                                </div>
+<header>
+    <h1>E-commerce Sentiment & Aspect Analysis</h1>
+</header>
 
-                                                <!-- File Info Display -->
-                                                <div id="fileInfoArea" class="file-info-area" style="display: none;">
-                                                    <div class="file-info-content">
-                                                        <div class="file-info-icon">✅</div>
-                                                        <div class="file-info-details">
-                                                            <p class="file-info-name">File: <strong id="selectedFileName"></strong></p>
-                                                            <p class="file-info-size">Size: <span id="selectedFileSize"></span></p>
-                                                            <p class="file-info-rows">Rows: <span id="selectedFileRows"></span></p>
-                                                        </div>
-                                                        <button type="button" class="btn-change" id="changeFileBtn">Change File</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div id="csvLoadingCard" class="card loading-card" style="display: none;">
-                                                <div class="spinner"></div>
-                                                <p id="loadingStatus">Processing CSV file...</p>
-                                            </div>
-
-                                            <button id="analyzeAllBtn" class="btn-primary" style="display: none; margin-top: 15px;">🚀 Analyze All Reviews</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </td>
-                    <td width="2%"></td>
-                </tr>
-                <tr>
-                    <td colspan="5">
-                        <div id="csvTab" class="tab-content" style="display: none; width: 100%;">
-                            <!-- CSV Data Grid and Results Side by Side -->
-                            <div class="csv-content-layout" style="display: none; width: 100%;">
-                                <!-- AG Grid -->
-                                <div class="csv-grid-container" style="width: 100%;">
-                                    <div id="gridCard" class="card" style="display: none; margin: 0; width: 100%;">
-                                        <h2>📊 Review Data</h2>
-                                        <div class="grid-info">
-                                            <span id="gridRowCount" class="grid-info-item"></span>
-                                            <div class="grid-actions">
-                                                <button id="clearFiltersBtn" class="btn-secondary" title="Clear all active filters">🔄 Clear Filters</button>
-                                                <button id="downloadResultsBtn" class="btn-download">⬇️ Download Results</button>
-                                            </div>
-                                        </div>
-                                        <div id="ag-grid-container" class="ag-theme-quartz"></div>
-                                    </div>
-                                </div>
-
-                                <!-- Results Panel -->
-                                <div class="csv-results-container">
-                                    <div id="resultCard" class="card result-card csv-result-card" style="display: none; width: 100%;">
-                                        <h2>Analysis Result</h2>
-                                        <div class="result-container" style="width: 100%;">
-                                            <div class="result-section">
-                                                <label>Model Used:</label>
-                                                <p id="modelUsed" class="result-value"></p>
-                                            </div>
-                                            <div class="result-section">
-                                                <label>Product Name:</label>
-                                                <p id="productOutput" class="result-value"></p>
-                                            </div>
-                                            <div class="result-row">
-                                                <div class="result-section">
-                                                    <label>Category:</label>
-                                                    <p id="categoryOutput" class="result-value"></p>
-                                                </div>
-                                                <div class="result-section">
-                                                    <label>Primary Category:</label>
-                                                    <p id="primaryCategoryOutput" class="result-value"></p>
-                                                </div>
-                                            </div>
-                                            <div class="result-section">
-                                                <label>Review Title:</label>
-                                                <p id="titleOutput" class="result-value"></p>
-                                            </div>
-                                            <div class="result-section">
-                                                <label>Review Text:</label>
-                                                <p id="textOutput" class="result-value text-output"></p>
-                                            </div>
-                                            <div class="result-section">
-                                                <label>Sentiment:</label>
-                                                <p id="sentimentResult" class="result-value sentiment-badge"></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="5">
-                        <div id="resultCard" class="card result-card" style="display: none;">
-                            <h2>Analysis Result</h2>
-                            <div class="result-container">
-                                <div class="result-section">
-                                    <label>Model Used:</label>
-                                    <p id="modelUsed" class="result-value"></p>
-                                </div>
-                                <div class="result-section">
-                                    <label>Product Name:</label>
-                                    <p id="productOutput" class="result-value"></p>
-                                </div>
-                                <div class="result-row">
-                                    <div class="result-section">
-                                        <label>Category:</label>
-                                        <p id="categoryOutput" class="result-value"></p>
-                                    </div>
-                                    <div class="result-section">
-                                        <label>Primary Category:</label>
-                                        <p id="primaryCategoryOutput" class="result-value"></p>
-                                    </div>
-                                </div>
-                                <div class="result-section">
-                                    <label>Review Title:</label>
-                                    <p id="titleOutput" class="result-value"></p>
-                                </div>
-                                <div class="result-section">
-                                    <label>Review Text:</label>
-                                    <p id="textOutput" class="result-value text-output"></p>
-                                </div>
-                                <div class="result-section">
-                                    <label>Sentiment:</label>
-                                    <p id="sentimentResult" class="result-value sentiment-badge"></p>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-
-
-                <!-- Result Card for Manual Entry -->
-        </div>
-
-            <!-- CSV Upload Mode -->
-            
-            <div id="errorCard" class="card error-card" style="display: none;">
-                <h2>⚠️ Error</h2>
-                <p id="errorMessage"></p>
-            </div>
-
-            <div id="loadingCard" class="card loading-card" style="display: none;">
-                <div class="spinner"></div>
-                <p>Analyzing your text...</p>
-            </div>
+<div class="container">
+    <div class="predictor-section">
+        <h2>Try it Yourself</h2>
+        <p>Enter a review text to see the predicted sentiment and the related aspect (topic).</p>
+        <textarea id="user-input" placeholder="Type your review here... e.g., 'The battery life is amazing, but the screen is a bit dim.'"></textarea>
+        <button class="btn" onclick="predictSentiment()">Analyze Text</button>
+        
+        <div id="result-box" class="result-box">
+            <strong>Sentiment:</strong> <span id="res-sentiment"></span><br>
+            <strong>Related Aspect:</strong> <span id="res-aspect"></span>
         </div>
     </div>
 
-    <script>
-        // ===== Tab Management =====
-        function setupTabs() {
-            const tabs = document.querySelectorAll('.tab-btn');
-            const manualContent = document.getElementById('manualTab');
-            const csvContent = document.getElementById('csvTab');
+    <h2>Aspect-Based Sentiment Distribution</h2>
+    <div class="dashboard">
+        {% for topic in topics %}
+        <div class="card">
+            <h3>{{ topic.name }}</h3>
+            <div class="stats">
+                <span>Total: {{ topic.count }}</span>
+                <span class="pos-text">P: {{ topic.positive }}</span>
+                <span class="neu-text">N: {{ topic.neutral }}</span>
+                <span class="neg-text">X: {{ topic.negative }}</span>
+            </div>
             
-            if (!manualContent || !csvContent) return;
-            
-            tabs.forEach(tab => {
-                const tabType = tab.getAttribute('data-tab');
-                
-                tab.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // Hide both tabs
-                    manualContent.style.display = 'none';
-                    csvContent.style.display = 'none';
-                    
-                    // Remove active class from all tabs
-                    tabs.forEach(t => t.classList.remove('active'));
-                    
-                    // Show the selected tab
-                    if (tabType === 'manual') {
-                        manualContent.style.display = 'block';
-                        csvContent.style.display = 'none';
-                    } else {
-                        csvContent.style.display = 'block';
-                        manualContent.style.display = 'none';
-                    }
-                    
-                    // Mark the clicked button as active
-                    tab.classList.add('active');
-                };
-            });
-        }
+            <div class="sentiment-bar">
+                <div class="bar-pos" style="width: {{ (topic.positive / topic.count * 100) }}%"></div>
+                <div class="bar-neu" style="width: {{ (topic.neutral / topic.count * 100) }}%"></div>
+                <div class="bar-neg" style="width: {{ (topic.negative / topic.count * 100) }}%"></div>
+            </div>
+
+            <div class="product-list">
+                <strong>Related Products:</strong><br>
+                {% for prod in topic.products %}
+                <span class="product-tag" onclick="showReviews({{ topic.id }}, '{{ prod }}')">{{ prod }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="review-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">Reviews</h2>
+        <div id="reviews-container"></div>
+    </div>
+</div>
+
+<script>
+    async function predictSentiment() {
+        const text = document.getElementById('user-input').value;
+        if (!text) return;
+
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text: text})
+        });
+        const data = await response.json();
         
-        // Run setup
-        setTimeout(setupTabs, 100);
+        const box = document.getElementById('result-box');
+        box.style.display = 'block';
+        
+        const s = document.getElementById('res-sentiment');
+        s.innerText = data.sentiment;
+        s.className = data.sentiment.toLowerCase() + '-text';
+        
+        document.getElementById('res-aspect').innerText = data.aspect;
+    }
 
-        // ===== Manual Entry Variables =====
-        const productInput = document.getElementById('productInput');
-        const categoryInput = document.getElementById('categoryInput');
-        const primaryCategoryInput = document.getElementById('primaryCategoryInput');
-        const titleInput = document.getElementById('titleInput');
-        const reviewInput = document.getElementById('reviewInput');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const resultCard = document.getElementById('resultCard');
-        const errorCard = document.getElementById('errorCard');
-        const loadingCard = document.getElementById('loadingCard');
-
-        analyzeBtn.addEventListener('click', async () => {
-            const product = productInput.value.trim();
-            const category = categoryInput.value.trim() || "General";
-            const primaryCategory = primaryCategoryInput.value.trim() || "General";
-            const title = titleInput.value.trim();
-            const review = reviewInput.value.trim();
-            const modelType = document.querySelector('input[name="model"]:checked').value;
-
-            // Validation
-            if (!review) {
-                showError('Please enter a review to analyze');
-                return;
-            }
-
-            if (review.length < 3) {
-                showError('Please enter at least 3 characters');
-                return;
-            }
-
-            // Show loading state
-            hideAllCards();
-            loadingCard.style.display = 'block';
-            analyzeBtn.disabled = true;
-            analyzeBtn.textContent = '⏳ Analyzing...';
-
-            try {
-                const response = await fetch('/api/predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        product: product,
-                        category: category,
-                        primaryCategory: primaryCategory,
-                        title: title,
-                        review: review,
-                        model_type: modelType
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to get prediction');
-                }
-
-                const data = await response.json();
-                displayResult(data);
-
-            } catch (error) {
-                console.error('Error:', error);
-                showError(error.message);
-            } finally {
-                analyzeBtn.disabled = false;
-                analyzeBtn.textContent = '🚀 Analyze Sentiment';
-                loadingCard.style.display = 'none';
-            }
+    async function showReviews(topicId, productName) {
+        document.getElementById('modal-title').innerText = `Reviews for: ${productName}`;
+        const response = await fetch('/get_reviews', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({topic_id: topicId, product_name: productName})
         });
-
-        function displayResult(data) {
-            document.getElementById('modelUsed').textContent = data.model;
-            document.getElementById('productOutput').textContent = data.product || 'N/A';
-            document.getElementById('categoryOutput').textContent = data.category || 'General';
-            document.getElementById('primaryCategoryOutput').textContent = data.primaryCategory || 'General';
-            document.getElementById('titleOutput').textContent = data.title || 'N/A';
-            document.getElementById('textOutput').textContent = data.review;
-            
-            const sentimentElement = document.getElementById('sentimentResult');
-            const sentiment = data.prediction.toLowerCase();
-            
-            // Add sentiment-specific styling
-            sentimentElement.textContent = data.prediction;
-            sentimentElement.className = `result-value sentiment-badge sentiment-${sentiment}`;
-            
-            hideAllCards();
-            resultCard.style.display = 'block';
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function showError(message) {
-            document.getElementById('errorMessage').textContent = message;
-            hideAllCards();
-            errorCard.style.display = 'block';
-        }
-
-        function hideAllCards() {
-            resultCard.style.display = 'none';
-            errorCard.style.display = 'none';
-            loadingCard.style.display = 'none';
-        }
-
-        // Allow Ctrl+Enter key to submit
-        reviewInput.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
-                analyzeBtn.click();
-            }
+        const reviews = await response.json();
+        
+        const container = document.getElementById('reviews-container');
+        container.innerHTML = '';
+        
+        reviews.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'review-item';
+            const sClass = r.sentiment.toLowerCase() + '-text';
+            div.innerHTML = `
+                <div class="review-sentiment ${sClass}">${r.sentiment}</div>
+                <strong>${r['reviews.title']}</strong>
+                <p>${r['reviews.text']}</p>
+            `;
+            container.appendChild(div);
         });
+        
+        document.getElementById('review-modal').style.display = 'block';
+    }
 
-        // ===== CSV Upload Variables =====
-        const csvFileInput = document.getElementById('csvFileInput');
-        const fileUploadArea = document.getElementById('fileUploadArea');
-        const fileInfoArea = document.getElementById('fileInfoArea');
-        const browseBtn = document.getElementById('browseBtn');
-        const changeFileBtn = document.getElementById('changeFileBtn');
-        const gridCard = document.getElementById('gridCard');
-        const csvLoadingCard = document.getElementById('csvLoadingCard');
-        const analyzeAllBtn = document.getElementById('analyzeAllBtn');
-        const downloadResultsBtn = document.getElementById('downloadResultsBtn');
-        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-        const loadingStatus = document.getElementById('loadingStatus');
-        let csvData = [];
+    function closeModal() {
+        document.getElementById('review-modal').style.display = 'none';
+    }
 
-        // Browse button click
-        browseBtn.addEventListener('click', () => csvFileInput.click());
-
-        // Change file button
-        changeFileBtn.addEventListener('click', () => {
-            fileUploadArea.style.display = 'block';
-            fileInfoArea.style.display = 'none';
-            csvFileInput.value = '';
-        });
-
-        // File upload drag and drop
-        fileUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            fileUploadArea.classList.add('dragover');
-        });
-
-        fileUploadArea.addEventListener('dragleave', () => {
-            fileUploadArea.classList.remove('dragover');
-        });
-
-        fileUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            fileUploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFileSelect(files[0]);
-            }
-        });
-
-        csvFileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFileSelect(e.target.files[0]);
-            }
-        });
-
-        function handleFileSelect(file) {
-            if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-                showError('❌ Please select a valid CSV file (must be .csv format)');
-                return;
-            }
-
-            // Check file size (limit to 10MB)
-            const maxSize = 10 * 1024 * 1024; // 10MB
-            if (file.size > maxSize) {
-                showError('❌ File size exceeds 10MB limit');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    csvData = parseCSV(e.target.result);
-                    if (csvData.length === 0) {
-                        showError('❌ CSV file is empty or has no valid data');
-                        return;
-                    }
-                    
-                    // Display file information
-                    displayFileInfo(file, csvData.length);
-                    displayCSVGrid();
-                    analyzeAllBtn.style.display = 'block';
-                } catch (error) {
-                    showError('❌ Error parsing CSV file: ' + error.message);
-                }
-            };
-            reader.onerror = () => {
-                showError('❌ Error reading file');
-            };
-            reader.readAsText(file);
+    window.onclick = function(event) {
+        const modal = document.getElementById('review-modal');
+        if (event.target == modal) {
+            closeModal();
         }
+    }
+</script>
 
-        function displayFileInfo(file, rowCount) {
-            document.getElementById('selectedFileName').textContent = file.name;
-            document.getElementById('selectedFileSize').textContent = (file.size / 1024).toFixed(2) + ' KB';
-            document.getElementById('selectedFileRows').textContent = rowCount + ' reviews';
-            
-            fileUploadArea.style.display = 'none';
-            fileInfoArea.style.display = 'block';
-        }
-
-        function parseCSV(csv) {
-            const lines = csv.split('\n').filter(line => line.trim());
-            if (lines.length < 2) return [];
-
-            // Parse header row using the same function as data rows
-            const headerValues = parseCSVLine(lines[0]);
-            const headers = headerValues.map(h => h.trim());
-            
-            const data = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const obj = {};
-                const values = parseCSVLine(lines[i]);
-                
-                // Map values to headers, preserving header names exactly as parsed
-                headers.forEach((header, index) => {
-                    if (header && values[index] !== undefined) {
-                        obj[header] = values[index];
-                    }
-                });
-                
-                // Only add row if it has data
-                if (Object.keys(obj).length > 0) {
-                    data.push(obj);
-                }
-            }
-
-            return data;
-        }
-
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                const nextChar = line[i + 1];
-
-                if (char === '"') {
-                    if (inQuotes && nextChar === '"') {
-                        current += '"';
-                        i++;
-                    } else {
-                        inQuotes = !inQuotes;
-                    }
-                } else if (char === ',' && !inQuotes) {
-                    // Remove surrounding quotes if they exist
-                    let trimmed = current.trim();
-                    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-                        trimmed = trimmed.slice(1, -1);
-                    }
-                    result.push(trimmed);
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            // Handle last value
-            let trimmed = current.trim();
-            if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-                trimmed = trimmed.slice(1, -1);
-            }
-            result.push(trimmed);
-            return result;
-        }
-
-        function displayCSVGrid() {
-            // Define AG Grid column definitions
-            const columnDefs = [
-                { 
-                    field: 'name', 
-                    headerName: 'Product Name',
-                    flex: 2,
-                    minWidth: 150,
-                    wrapText: true,
-                    autoHeight: true,
-                    filter: 'agTextColumnFilter',
-                    filterParams: {
-                        filterOptions: ['contains', 'equals', 'startsWith', 'endsWith'],
-                        debounceMs: 200
-                    }
-                },
-                { 
-                    field: 'brand', 
-                    headerName: 'Brand',
-                    flex: 1,
-                    minWidth: 100,
-                    wrapText: true,
-                    autoHeight: true,
-                    filter: 'agTextColumnFilter',
-                    filterParams: {
-                        filterOptions: ['contains', 'equals'],
-                        debounceMs: 200
-                    }
-                },
-                { 
-                    field: 'categories', 
-                    headerName: 'Category',
-                    flex: 1,
-                    minWidth: 100,
-                    wrapText: true,
-                    autoHeight: true,
-                    filter: 'agTextColumnFilter',
-                    filterParams: {
-                        filterOptions: ['contains', 'equals'],
-                        debounceMs: 200
-                    }
-                },
-                { 
-                    field: 'primaryCategories', 
-                    headerName: 'Primary Category',
-                    flex: 1.2,
-                    minWidth: 120,
-                    wrapText: true,
-                    autoHeight: true,
-                    filter: 'agTextColumnFilter',
-                    filterParams: {
-                        filterOptions: ['contains', 'equals'],
-                        debounceMs: 200
-                    }
-                },
-                { 
-                    field: 'reviews.title', 
-                    headerName: 'Review Title',
-                    flex: 2,
-                    minWidth: 180,
-                    wrapText: true,
-                    autoHeight: true,
-                    valueGetter: (params) => {
-                        return params.data['reviews.title'] || '';
-                    },
-                    filter: 'agTextColumnFilter',
-                    filterParams: {
-                        filterOptions: ['contains', 'equals', 'startsWith'],
-                        debounceMs: 200
-                    }
-                },
-                { 
-                    field: 'reviews.text', 
-                    headerName: 'Review Text',
-                    flex: 2.5,
-                    minWidth: 200,
-                    wrapText: true,
-                    autoHeight: true,
-                    valueGetter: (params) => {
-                        return params.data['reviews.text'] || '';
-                    },
-                    filter: 'agTextColumnFilter',
-                    filterParams: {
-                        filterOptions: ['contains', 'equals'],
-                        debounceMs: 200
-                    },
-                    cellRenderer: (params) => {
-                        const text = params.value || '';
-                        return '<div style="word-break: break-word; white-space: normal;">' + 
-                               (text.length > 100 ? text.substring(0, 100) + '...' : text) + 
-                               '</div>';
-                    }
-                },
-                { 
-                    field: 'sentiment', 
-                    headerName: 'Sentiment',
-                    flex: 0.7,
-                    minWidth: 100,
-                    filter: 'agSetColumnFilter',
-                    filterParams: {
-                        values: ['Positive', 'Negative', 'Neutral', '⏳ Pending']
-                    },
-                    cellRenderer: (params) => {
-                        const sentiment = params.value || 'Pending';
-                        if (sentiment === 'Pending' || sentiment === '⏳ Pending') {
-                            return '<span class="sentiment-badge-small">⏳ Pending</span>';
-                        }
-                        return '<span class="sentiment-badge-small sentiment-' + sentiment.toLowerCase() + '">' + sentiment + '</span>';
-                    }
-                },
-                { 
-                    headerName: 'Action',
-                    flex: 0.6,
-                    minWidth: 85,
-                    filter: false,
-                    sortable: false,
-                    cellRenderer: (params) => {
-                        return '<button class="analyze-row-btn-grid" data-index="' + params.rowIndex + '">Analyze</button>';
-                    }
-                }
-            ];
-
-            // Initialize grid options
-            const gridOptions = {
-                columnDefs: columnDefs,
-                rowData: csvData,
-                domLayout: 'normal',
-                rowHeight: 'auto',
-                suppressMovableColumns: false,
-                enableColResize: true,
-                enableFilter: true,
-                filterModel: {},
-                onGridReady: (params) => {
-                    params.api.sizeColumnsToFit();
-                },
-                onFirstDataRendered: (params) => {
-                    params.api.sizeColumnsToFit();
-                },
-                onFilterChanged: (params) => {
-                    // Update grid when filters change
-                    const currentFilters = params.api.getFilterModel();
-                    console.log('Filters applied:', currentFilters);
-                }
-            };
-
-            // Create grid instance
-            const gridDiv = document.getElementById('ag-grid-container');
-            
-            // Clear any existing grid
-            gridDiv.innerHTML = '';
-            
-            // Debug: Log first few rows to verify data
-            if (csvData.length > 0) {
-                console.log('========== CSV DATA DEBUG ==========');
-                console.log('Total rows parsed:', csvData.length);
-                console.log('First CSV row:', csvData[0]);
-                console.log('Column names in first row:', Object.keys(csvData[0]));
-                console.log('reviews.title value:', csvData[0]['reviews.title']);
-                console.log('reviews.text value:', csvData[0]['reviews.text']);
-                console.log('reviews.date value:', csvData[0]['reviews.date']);
-                
-                // Show sample of first 3 rows
-                csvData.slice(0, 3).forEach((row, idx) => {
-                    console.log(`Row ${idx}:`, {
-                        title: row['reviews.title'] ? row['reviews.title'].substring(0, 50) : 'MISSING',
-                        text: row['reviews.text'] ? row['reviews.text'].substring(0, 50) : 'MISSING',
-                        name: row.name
-                    });
-                });
-                console.log('====================================');
-            }
-            
-            const gridApi = agGrid.createGrid(gridDiv, gridOptions);
-
-            // Store grid API for later use
-            window.gridApi = gridApi;
-            
-            // Refresh the grid to ensure proper rendering
-            setTimeout(() => {
-                if (gridApi) {
-                    gridApi.sizeColumnsToFit();
-                }
-            }, 300);
-
-            // Add event listener to analyze buttons
-            setTimeout(() => {
-                document.querySelectorAll('.analyze-row-btn-grid').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const index = parseInt(e.target.getAttribute('data-index'));
-                        analyzeRow(index);
-                    });
-                });
-            }, 100);
-
-            // Update row count info
-            const analyzedCount = csvData.filter(row => row.sentiment && row.sentiment !== '⏳ Pending').length;
-            document.getElementById('gridRowCount').textContent = `Showing ${csvData.length} reviews (${analyzedCount} analyzed)`;
-
-            gridCard.style.display = 'block';
-            document.querySelector('.csv-content-layout').style.display = 'flex';
-            downloadResultsBtn.style.display = csvData.length > 0 && analyzedCount > 0 ? 'block' : 'none';
-        }
-
-        async function analyzeRow(index) {
-            const row = csvData[index];
-            const modelType = document.querySelector('input[name="model"]:checked').value;
-
-            // Show loading state in grid cell if grid is available
-            if (window.gridApi) {
-                const rowNode = window.gridApi.getRowNode(index);
-                if (rowNode) {
-                    rowNode.setData({...row, sentiment: '⏳ Loading...'});
-                }
-            }
-
-            try {
-                const response = await fetch('/api/predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        product: row.name || 'Unknown',
-                        category: row.categories || 'General',
-                        primaryCategory: row.primaryCategories || 'General',
-                        title: row['reviews.title'] || '',
-                        review: row['reviews.text'] || '',
-                        model_type: modelType
-                    })
-                });
-
-                if (!response.ok) throw new Error('Failed to analyze');
-
-                const data = await response.json();
-                row.sentiment = data.prediction;
-
-                // Update grid with new sentiment
-                if (window.gridApi) {
-                    const rowNode = window.gridApi.getRowNode(index);
-                    if (rowNode) {
-                        rowNode.setData(row);
-                    }
-                }
-
-                // Update grid info
-                const analyzedCount = csvData.filter(row => row.sentiment && row.sentiment !== '⏳ Pending' && row.sentiment !== '⏳ Loading...').length;
-                document.getElementById('gridRowCount').textContent = `Showing ${csvData.length} reviews (${analyzedCount} analyzed)`;
-                downloadResultsBtn.style.display = analyzedCount > 0 ? 'block' : 'none';
-
-                // Show result modal
-                showRowResult(data, row);
-
-            } catch (error) {
-                // Update row to show error
-                row.sentiment = 'Error';
-                if (window.gridApi) {
-                    const rowNode = window.gridApi.getRowNode(index);
-                    if (rowNode) {
-                        rowNode.setData(row);
-                    }
-                }
-                showError('Failed to analyze row: ' + error.message);
-            }
-        }
-
-        async function analyzeAllRows() {
-            const modelType = document.querySelector('input[name="model"]:checked').value;
-            csvLoadingCard.style.display = 'block';
-            analyzeAllBtn.disabled = true;
-            analyzeAllBtn.textContent = '⏳ Analyzing...';
-
-            let completed = 0;
-            const total = csvData.length;
-
-            for (let i = 0; i < csvData.length; i++) {
-                const row = csvData[i];
-
-                // Update grid to show loading
-                if (window.gridApi) {
-                    const rowNode = window.gridApi.getRowNode(i);
-                    if (rowNode) {
-                        rowNode.setData({...row, sentiment: '⏳ Loading...'});
-                    }
-                }
-
-                try {
-                    const response = await fetch('/api/predict', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            product: row.name || 'Unknown',
-                            category: row.categories || 'General',
-                            primaryCategory: row.primaryCategories || 'General',
-                            title: row['reviews.title'] || '',
-                            review: row['reviews.text'] || '',
-                            model_type: modelType
-                        })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        row.sentiment = data.prediction;
-
-                        // Update grid
-                        if (window.gridApi) {
-                            const rowNode = window.gridApi.getRowNode(i);
-                            if (rowNode) {
-                                rowNode.setData(row);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    row.sentiment = 'Error';
-                    if (window.gridApi) {
-                        const rowNode = window.gridApi.getRowNode(i);
-                        if (rowNode) {
-                            rowNode.setData(row);
-                        }
-                    }
-                }
-
-                completed++;
-                loadingStatus.textContent = `Processing: ${completed}/${total} rows...`;
-            }
-
-            csvLoadingCard.style.display = 'none';
-            analyzeAllBtn.disabled = false;
-            analyzeAllBtn.textContent = '🚀 Analyze All Reviews';
-            
-            // Update grid info
-            const analyzedCount = csvData.filter(row => row.sentiment && row.sentiment !== '⏳ Pending' && row.sentiment !== '⏳ Loading...' && row.sentiment !== 'Error').length;
-            document.getElementById('gridRowCount').textContent = `Showing ${csvData.length} reviews (${analyzedCount} analyzed)`;
-            downloadResultsBtn.style.display = analyzedCount > 0 ? 'block' : 'none';
-            
-            // Show completion message
-            document.getElementById('errorMessage').textContent = '✅ Batch analysis complete! ' + analyzedCount + ' out of ' + total + ' reviews have been analyzed.';
-            hideAllCards();
-            errorCard.style.display = 'block';
-        }
-
-        function showRowResult(data, row) {
-            // Reuse the existing result card for single row analysis
-            document.getElementById('modelUsed').textContent = data.model;
-            document.getElementById('productOutput').textContent = data.product || 'N/A';
-            document.getElementById('categoryOutput').textContent = data.category || 'General';
-            document.getElementById('primaryCategoryOutput').textContent = data.primaryCategory || 'General';
-            document.getElementById('titleOutput').textContent = data.title || 'N/A';
-            document.getElementById('textOutput').textContent = data.review;
-            
-            const sentimentElement = document.getElementById('sentimentResult');
-            const sentiment = data.prediction.toLowerCase();
-            sentimentElement.textContent = data.prediction;
-            sentimentElement.className = `result-value sentiment-badge sentiment-${sentiment}`;
-            
-            // Show result card without hiding the grid
-            const resultCard = document.getElementById('resultCard');
-            resultCard.style.display = 'block';
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        analyzeAllBtn.addEventListener('click', analyzeAllRows);
-
-        // Clear filters button
-        clearFiltersBtn.addEventListener('click', () => {
-            if (window.gridApi) {
-                window.gridApi.setFilterModel(null);
-                console.log('All filters cleared');
-            }
-        });
-
-        // Download results button
-        downloadResultsBtn.addEventListener('click', () => {
-            downloadCSVResults();
-        });
-
-        function downloadCSVResults() {
-            if (csvData.length === 0) {
-                showError('No data to download');
-                return;
-            }
-
-            // Create CSV content with sentiment results
-            let csv = 'name,brand,categories,primaryCategories,reviews.title,reviews.text,sentiment\n';
-            
-            csvData.forEach(row => {
-                const sentiment = row.sentiment || 'Pending';
-                const escapedName = '"' + (row.name || '').replace(/"/g, '""') + '"';
-                const escapedBrand = '"' + (row.brand || '').replace(/"/g, '""') + '"';
-                const escapedCategories = '"' + (row.categories || '').replace(/"/g, '""') + '"';
-                const escapedPrimaryCategories = '"' + (row.primaryCategories || '').replace(/"/g, '""') + '"';
-                const escapedTitle = '"' + (row['reviews.title'] || '').replace(/"/g, '""') + '"';
-                const escapedText = '"' + (row['reviews.text'] || '').replace(/"/g, '""') + '"';
-                
-                csv += `${escapedName},${escapedBrand},${escapedCategories},${escapedPrimaryCategories},${escapedTitle},${escapedText},${sentiment}\n`;
-            });
-
-            // Create blob and download
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'sentiment_analysis_results_' + new Date().toISOString().split('T')[0] + '.csv';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }
-    </script>
-    <!-- AG Grid Library -->
-    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31/dist/ag-grid-community.min.js"></script>
 </body>
 </html>

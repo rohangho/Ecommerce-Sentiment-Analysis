@@ -15,13 +15,22 @@ except ImportError:
     _HAS_IPYTHON = False
 
 # Import all model classes
-from sentiment_analysis_Logistic import SentimentAnalysis
-from sentiment_analysis_SVM import SentimentAnalysisSVM
-from sentiment_analysis_RNN import SentimentAnalysisRNN
-from sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
-from sentiment_analysis_BERT import SentimentAnalysisBERT
-from sentiment_analysis_Roberta import SentimentAnalysisHF
-from sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
+try:
+    from .sentiment_analysis_Logistic import SentimentAnalysis
+    from .sentiment_analysis_SVM import SentimentAnalysisSVM
+    from .sentiment_analysis_RNN import SentimentAnalysisRNN
+    from .sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
+    from .sentiment_analysis_BERT import SentimentAnalysisBERT
+    from .sentiment_analysis_Roberta import SentimentAnalysisHF
+    from .sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
+except (ImportError, ValueError):
+    from sentiment_analysis_Logistic import SentimentAnalysis
+    from sentiment_analysis_SVM import SentimentAnalysisSVM
+    from sentiment_analysis_RNN import SentimentAnalysisRNN
+    from sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
+    from sentiment_analysis_BERT import SentimentAnalysisBERT
+    from sentiment_analysis_Roberta import SentimentAnalysisHF
+    from sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
 
 class SentimentReporter:
     def __init__(self, output_dir="personal_update/outputs"):
@@ -60,7 +69,6 @@ class SentimentReporter:
         """Scans for available models and returns predicted labels for each."""
         p = Path(model_dir)
         preds = {}
-        X_df = df[["reviews.text", "reviews.title"]].copy().fillna("Unknown")
 
         # 1. Logistic
         lr_path = p / "sentiment_model_TFD_LR.pkl"
@@ -219,12 +227,15 @@ class SentimentReporter:
         """The main entry point called from notebooks."""
         print("\n--- Generating Comprehensive Sentiment Reports ---")
         
-        # Ensure text columns are strings and non-null for ML pipelines and WordClouds
+        # Ensure text columns are strings and non-null
         df = df.copy()
-        if 'reviews.text' in df.columns:
-            df['reviews.text'] = df['reviews.text'].fillna('').astype(str)
-        if 'reviews.title' in df.columns:
-            df['reviews.title'] = df['reviews.title'].fillna('').astype(str)
+        
+        # ML pipelines expect these categorical features
+        required_cols = ['brand', 'categories', 'primaryCategories', 'reviews.text', 'reviews.title']
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = "Unknown"
+            df[col] = df[col].fillna('Unknown').astype(str)
 
         y_true = df["sentiment"].values if "sentiment" in df.columns else None
         

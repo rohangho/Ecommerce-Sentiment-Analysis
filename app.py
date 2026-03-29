@@ -1,186 +1,131 @@
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
-import sys
 import os
 
-os.environ["HF_TOKEN"] = "YOUR_HF_TOKEN_HERE"
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+# Fix for hdbscan hanging on macOS (Apple Silicon especially)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Add notebooks to path to import the model classes
-notebooks_path = os.path.join(os.path.dirname(__file__), 'notebooks')
-sys.path.insert(0, notebooks_path)
+import sys
+import tensorflow as tf
+from pathlib import Path
+from bertopic import BERTopic
 
-# Import the model classes using importlib to handle filenames with dashes
-import importlib.util
-
-# Import SentimentAnalysis from sentiment-analysis.py
-spec_sa = importlib.util.spec_from_file_location("sentiment_analysis_module", os.path.join(notebooks_path, "sentiment-analysis.py"))
-sentiment_analysis_module = importlib.util.module_from_spec(spec_sa)
-spec_sa.loader.exec_module(sentiment_analysis_module)
-SentimentAnalysis = sentiment_analysis_module.SentimentAnalysis
-
-# Import SentimentAnalysisHF from Pre-trained.py
-spec_hf = importlib.util.spec_from_file_location("pretrained_module", os.path.join(notebooks_path, "Pre-trained.py"))
-pretrained_module = importlib.util.module_from_spec(spec_hf)
-spec_hf.loader.exec_module(pretrained_module)
-SentimentAnalysisHF = pretrained_module.SentimentAnalysisHF
-
-# Import SentimentAnalysisSVM from sentiment-analysis-SVM.py
-spec_svm = importlib.util.spec_from_file_location("svm_module", os.path.join(notebooks_path, "sentiment-analysis-SVM.py"))
-svm_module = importlib.util.module_from_spec(spec_svm)
-spec_svm.loader.exec_module(svm_module)
-SentimentAnalysisSVM = svm_module.SentimentAnalysisSVM
-
-# Import SentimentAnalysisRNN from sentiment-analysis-RNN.py
-spec_rnn = importlib.util.spec_from_file_location("rnn_module", os.path.join(notebooks_path, "sentiment-analysis-RNN.py"))
-rnn_module = importlib.util.module_from_spec(spec_rnn)
-spec_rnn.loader.exec_module(rnn_module)
-SentimentAnalysisRNN = rnn_module.SentimentAnalysisRNN
-
-# Import SentimentAnalysisBERT from sentiment-analysis-BERT.py
-spec_bert = importlib.util.spec_from_file_location("bert_module", os.path.join(notebooks_path, "sentiment-analysis-BERT.py"))
-bert_module = importlib.util.module_from_spec(spec_bert)
-spec_bert.loader.exec_module(bert_module)
-SentimentAnalysisBERT = bert_module.SentimentAnalysisBERT
+# Add notebooks to sys.path for model class imports
+sys.path.insert(0, os.path.abspath('notebooks'))
+from sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
 
 app = Flask(__name__)
 
-# Load all models
-print("="*60)
-print("Loading Sentiment Analysis Models")
-print("="*60)
+# --- Configuration ---
+DATA_PATH = "Ecommerce_dataset/combined_data_with_topics.csv"
+TOPIC_INFO_PATH = "deploy_models/bertopic_info.csv"
+MODEL_PKL = "deploy_models/sentiment_model_deberta.pkl"
+BERTOPIC_MODEL_PATH = "deploy_models/bertopic_model"
 
-models = {}
+# Global objects for the app
+sentiment_model = None
+topic_model = None
+df_data = None
+df_topics = None
 
-try:
-    print("Loading Logistic Regression model...")
-    logistic_model = SentimentAnalysis('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_TFD_LR.pkl')
-    models['logistic'] = logistic_model
-    print("✓ Logistic Regression model loaded successfully")
-except Exception as e:
-    print(f"✗ Error loading Logistic Regression model: {e}")
-    models['logistic'] = None
+def load_resources():
+    global sentiment_model, topic_model, df_data, df_topics
+    print("Loading resources... this might take a minute...")
+    
+    # 1. Sentiment Model
+    sentiment_model = SentimentAnalysisDeBERTa(model_path=MODEL_PKL)
+    
+    # 2. Topic Model
+    topic_model = BERTopic.load(BERTOPIC_MODEL_PATH)
+    
+    # 3. Data
+    if os.path.exists(DATA_PATH):
+        df_data = pd.read_csv(DATA_PATH)
+        df_data['reviews.text'] = df_data['reviews.text'].fillna('').astype(str)
+        df_data['reviews.title'] = df_data['reviews.title'].fillna('').astype(str)
+    
+    if os.path.exists(TOPIC_INFO_PATH):
+        df_topics = pd.read_csv(TOPIC_INFO_PATH)
 
-try:
-    print("Loading RoBERTa (HuggingFace) model...")
-    hf_model = SentimentAnalysisHF('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_pre_trained_model.pkl')
-    models['hf'] = hf_model
-    print("✓ RoBERTa model loaded successfully")
-except Exception as e:
-    print(f"✗ Error loading RoBERTa model: {e}")
-    models['hf'] = None
-
-try:
-    print("Loading SVM model...")
-    svm_model = SentimentAnalysisSVM('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_SVM.pkl')
-    models['svm'] = svm_model
-    print("✓ SVM model loaded successfully")
-except Exception as e:
-    print(f"✗ Error loading SVM model: {e}")
-    models['svm'] = None
-
-try:
-    print("Loading RNN model...")
-    rnn_model = SentimentAnalysisRNN('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_RNN.pkl')
-    models['rnn'] = rnn_model
-    print("✓ RNN model loaded successfully")
-except Exception as e:
-    print(f"✗ Error loading RNN model: {e}")
-    models['rnn'] = None
-
-try:
-    print("Loading BERT model...")
-    bert_model = SentimentAnalysisBERT('../Capstone/Ecommerce-Sentiment-Analysis/sentiment_model_BERT.pkl')
-    models['bert'] = bert_model
-    print("✓ BERT model loaded successfully")
-except Exception as e:
-    print(f"✗ Error loading BERT model: {e}")
-    models['bert'] = None
-
-print("="*60 + "\n")
-
-
+# Routes
 @app.route('/')
 def index():
-    return render_template('index.html')
-
-
-@app.route('/api/predict', methods=['POST'])
-def predict():
-    try:
-        data = request.get_json()
-        product = data.get('product', 'Unknown').strip()
-        category = data.get('category', 'General').strip() or 'General'
-        primary_category = data.get('primaryCategory', 'General').strip() or 'General'
-        title = data.get('title', '').strip()
-        review = data.get('review', '').strip()
-        model_type = data.get('model_type', 'logistic')
-
-        if not review:
-            return jsonify({'error': 'Please enter a review to analyze'}), 400
-
-        if len(review) < 3:
-            return jsonify({'error': 'Review must be at least 3 characters'}), 400
-
-        model_info = {
-            'logistic': {'name': 'Logistic Regression', 'desc': 'Fast, trained on your dataset'},
-            'hf': {'name': 'Pre-trained RoBERTa', 'desc': 'Advanced transformer from HuggingFace'},
-            'svm': {'name': 'Support Vector Machine', 'desc': 'High-dimensional text classification'},
-            'rnn': {'name': 'Recurrent Neural Network', 'desc': 'LSTM-based sequence learning'},
-            'bert': {'name': 'BERT Transformer', 'desc': 'Pre-trained bidirectional transformer'}
-        }
-
-        if model_type not in models:
-            return jsonify({'error': f'Invalid model type: {model_type}'}), 400
-
-        model = models[model_type]
-        if model is None:
-            return jsonify({'error': f'{model_info[model_type]["name"]} model not loaded'}), 500
-
-        # Make prediction based on model type
-        if model_type == 'logistic':
-            sample = pd.DataFrame([{
-                "reviews.text": review,
-                "reviews.title": title,
-                "brand": product,
-                "categories": category,
-                "primaryCategories": primary_category
-            }])
-            prediction = model.model.predict(sample)[0]
-
-        elif model_type == 'hf':
-            prediction = model.predict(review)
-
-        elif model_type == 'svm':
-            prediction = model.predict(review, title, product, category, primary_category)
-
-        elif model_type == 'rnn':
-            prediction = model.predict(review, title, product, category, primary_category)
-
-        elif model_type == 'bert':
-            prediction = model.predict(review, title, product, category, primary_category)
-
-        return jsonify({
-            'success': True,
-            'model': model_info[model_type]['name'],
-            'prediction': prediction,
-            'confidence': "N/A",
-            'product': product,
-            'category': category,
-            'primaryCategory': primary_category,
-            'title': title,
-            'review': review
+    if df_topics is None:
+        return "Resources not loaded correctly. Run the pipeline first."
+    
+    # Group by Topic Name and count sentiments
+    topic_summary = []
+    for _, row in df_topics.iterrows():
+        t_id = row['Topic']
+        t_name = row['Name']
+        
+        # Get subset of data for this topic
+        topic_subset = df_data[df_data['topic'] == t_id]
+        if topic_subset.empty: continue
+        
+        sentiments = topic_subset['sentiment'].value_counts().to_dict()
+        
+        # Get unique product names for this topic
+        products = topic_subset['name'].unique().tolist()
+        
+        topic_summary.append({
+            'id': int(t_id),
+            'name': t_name,
+            'count': int(row['Count']),
+            'positive': sentiments.get('Positive', 0),
+            'neutral': sentiments.get('Neutral', 0),
+            'negative': sentiments.get('Negative', 0),
+            'products': products[:15] # limit to top 15 products for display
         })
+        
+    return render_template('index.html', topics=topic_summary)
 
-    except Exception as e:
-        print(f"Error during prediction: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'Prediction error: {str(e)}'}), 500
+@app.route('/get_reviews', methods=['POST'])
+def get_reviews():
+    topic_id = request.json.get('topic_id')
+    product_name = request.json.get('product_name')
+    
+    subset = df_data[(df_data['topic'] == int(topic_id)) & (df_data['name'] == product_name)]
+    reviews = subset[['reviews.title', 'reviews.text', 'sentiment']].to_dict('records')
+    return jsonify(reviews)
 
+@app.route('/predict', methods=['POST'])
+def predict():
+    text = request.json.get('text', '')
+    if not text:
+        return jsonify({'error': 'No text provided'})
+    
+    # 1. Sentiment
+    # Predict using DeBERTa
+    enc = sentiment_model.tokenizer(
+        [text], 
+        add_special_tokens=True, 
+        max_length=sentiment_model.max_len, 
+        padding="max_length", 
+        truncation=True, 
+        return_tensors="tf"
+    )
+    logits = sentiment_model.model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"]).logits
+    pred_idx = tf.argmax(logits, axis=1).numpy()[0]
+    sentiment = sentiment_model.class_names[int(pred_idx)]
+    
+    # 2. Aspect (Topic)
+    topics, probs = topic_model.transform([text])
+    topic_id = topics[0]
+    
+    # Find topic name
+    topic_name = "General/Mixed"
+    if df_topics is not None:
+        match = df_topics[df_topics['Topic'] == topic_id]
+        if not match.empty:
+            topic_name = match.iloc[0]['Name']
+            
+    return jsonify({
+        'sentiment': sentiment,
+        'aspect': topic_name
+    })
 
 if __name__ == '__main__':
-    print("\n" + "="*50)
-    print("Starting Sentiment Analysis Web App")
-    print("="*50 + "\n")
-    app.run(debug=True, port=5000)
+    load_resources()
+    app.run(debug=True, port=5001)

@@ -8,7 +8,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from transformers import AutoTokenizer, TFAutoModelForSequenceClassification, create_optimizer
 
-import CapstoneData
+try:
+    from . import CapstoneData
+except (ImportError, ValueError):
+    import CapstoneData
 
 
 class SentimentAnalysisDeBERTa:
