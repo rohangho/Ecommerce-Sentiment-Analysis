@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from transformers import AutoTokenizer, TFAutoModelForSequenceClassification, create_optimizer
 
-import CapstoneData
+from . import CapstoneData
 
 
 class SentimentAnalysisHF:

@@ -1,166 +1,272 @@
 import os
-import re
-import json
 import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from collections import Counter
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-import nltk
+from pathlib import Path
+import tensorflow as tf
+from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from wordcloud import WordCloud
+try:
+    from IPython.display import Image, display
+    _HAS_IPYTHON = True
+except ImportError:
+    _HAS_IPYTHON = False
 
-# Ensure NLTK resources are available
-nltk.download('stopwords', quiet=True)
-nltk.download('wordnet', quiet=True)
-
-# Import our model class
-from notebooks.sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
+# Import all model classes
+from .sentiment_analysis_Logistic import SentimentAnalysis
+from .sentiment_analysis_SVM import SentimentAnalysisSVM
+from .sentiment_analysis_RNN import SentimentAnalysisRNN
+from .sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
+from .sentiment_analysis_BERT import SentimentAnalysisBERT
+from .sentiment_analysis_Roberta import SentimentAnalysisHF
+from .sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
 
 class SentimentReporter:
     def __init__(self, output_dir="personal_update/outputs"):
-        self.output_dir = output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
-        self.stop_words = set(stopwords.words('english'))
-        self.lemmatizer = WordNetLemmatizer()
-        
-        # Aspect Keywords from Section 12
-        self.ASPECT_KEYWORDS = {
-            'Price/Value':       ['price','cost','expensive','cheap','value','money','worth','deal','affordable','budget','sale','bargain'],
-            'Screen/Display':    ['screen','display','resolution','bright','hd','visual','color','picture','pixel','view'],
-            'Battery/Power':     ['battery','charge','charging','power','last','outlet','plug','cord','usb'],
-            'Sound/Audio':       ['sound','speaker','audio','volume','music','loud','bass','hear','listen','noise'],
-            'Speed/Performance': ['speed','fast','slow','lag','performance','quick','responsive','processor','ram','memory'],
-            'Build/Design':      ['build','quality','durable','sturdy','design','weight','light','heavy','size','compact','portable'],
-            'Ease of Use':       ['easy','simple','intuitive','user-friendly','setup','navigate','interface','learn','beginner','convenient'],
-            'Apps/Software':     ['app','apps','software','store','download','install','update','google','play','alexa','skill'],
-            'Camera':            ['camera','photo','picture','video','record','selfie'],
-            'Kids/Family':       ['kid','kids','child','children','son','daughter','grandkid','family','parent','parental','toddler'],
-        }
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.label_names = ['Negative', 'Neutral', 'Positive']
+        self.model_order = ["Logistic", "SVM", "RNN", "DistilBERT", "BERT", "RoBERTa", "DeBERTa"]
 
-    def categorize_product(self, name):
-        """Map product names to categories."""
-        n = str(name).lower()
-        if 'echo show' in n:   return 'Echo Show'
-        if 'echo plus' in n:   return 'Echo Plus'
-        if 'tap' in n:         return 'Amazon Tap'
-        if 'fire kids' in n:   return 'Fire Kids Tablet'
-        if 'fire hd 10' in n:  return 'Fire HD 10'
-        if 'fire hd 8' in n or 'fire hd8' in n: return 'Fire HD 8'
-        if 'fire' in n and 'tablet' in n:        return 'Fire 7 Tablet'
-        if 'oasis' in n:       return 'Kindle Oasis'
-        if 'voyage' in n:      return 'Kindle Voyage'
-        if 'kindle' in n:      return 'Kindle E-reader'
-        if 'fire tv' in n:     return 'Fire TV'
-        return 'Other'
+    def _predict_bert_batch(self, sa, df):
+        combined = df["reviews.text"].fillna("").astype(str) + " " + df["reviews.title"].fillna("").astype(str)
+        texts = list(combined)
+        labels = []
+        bs = sa.batch_size
+        for i in range(0, len(texts), bs):
+            chunk = texts[i : i + bs]
+            enc = sa.tokenizer(list(chunk), add_special_tokens=True, max_length=sa.max_len, padding="max_length", truncation=True, return_tensors="tf")
+            logits = sa.model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"]).logits
+            pred = tf.argmax(logits, axis=1).numpy()
+            labels.extend(sa.class_names[j] for j in pred)
+        return labels
 
-    def get_product_type(self, cat):
-        """Group categories into types."""
-        if cat in ['Echo Show','Echo Plus','Amazon Tap']: return 'Smart Speakers'
-        if cat in ['Fire HD 8','Fire HD 10','Fire 7 Tablet','Fire Kids Tablet']: return 'Tablets'
-        if cat in ['Kindle E-reader','Kindle Voyage','Kindle Oasis']: return 'E-Readers'
-        return 'Other'
+    def _predict_hf_batch(self, sa, df):
+        combined = df["reviews.text"].fillna("").astype(str) + " " + df["reviews.title"].fillna("").astype(str)
+        texts = list(combined)
+        labels = []
+        bs = sa.batch_size
+        for i in range(0, len(texts), bs):
+            chunk = texts[i : i + bs]
+            enc = sa.tokenizer(list(chunk), add_special_tokens=True, max_length=sa.max_len, padding="max_length", truncation=True, return_tensors="tf")
+            logits = sa.model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"]).logits
+            pred = tf.argmax(logits, axis=1).numpy()
+            labels.extend(sa.class_names[int(j)] for j in pred)
+        return labels
 
-    def extract_aspects(self, text):
-        """Identify aspects in text."""
-        t = str(text).lower()
-        return [asp for asp, kws in self.ASPECT_KEYWORDS.items() if any(kw in t for kw in kws)]
+    def gather_all_predictions(self, df, model_dir="deploy_models"):
+        """Scans for available models and returns predicted labels for each."""
+        p = Path(model_dir)
+        preds = {}
+        X_df = df[["reviews.text", "reviews.title"]].copy().fillna("Unknown")
 
-    def generate_visualizations(self, df):
-        """Run sections 14, 15, and 16 logic."""
-        
-        # --- Section 14: Overall Sentiment Visualizations ---
-        print("Generating Section 14: Overall Sentiment Plots...")
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-        colors = ['#2ecc71', '#f39c12', '#e74c3c']
-        
-        sentiment_counts = df['sentiment'].value_counts()
-        axes[0].pie(sentiment_counts.values, labels=sentiment_counts.index, 
-                    autopct='%1.1f%%', colors=colors, startangle=90)
-        axes[0].set_title('Overall Sentiment Distribution')
+        # 1. Logistic
+        lr_path = p / "sentiment_model_TFD_LR.pkl"
+        if lr_path.exists():
+            print("Gathering predictions: Logistic...")
+            lr = SentimentAnalysis(model_path=str(lr_path))
+            # Pipeline expects a DataFrame with reviews.text, reviews.title, etc.
+            preds["Logistic"] = lr.model.predict(df).tolist()
 
-        df['text_length'] = df['reviews.text'].str.len()
-        for sent, color in zip(['Positive','Neutral','Negative'], colors):
-            if sent in df['sentiment'].values:
-                subset = df[df['sentiment'] == sent]['text_length']
-                axes[1].hist(subset, bins=50, alpha=0.6, label=sent, color=color)
-        axes[1].set_title('Review Length Distribution')
-        axes[1].set_xlabel('Length'); axes[1].set_ylabel('Count'); axes[1].legend()
-        axes[1].set_xlim(0, 1000)
-        
+        # 2. SVM
+        svm_path = p / "sentiment_model_SVM.pkl"
+        if svm_path.exists():
+            print("Gathering predictions: SVM...")
+            svm = SentimentAnalysisSVM(model_path=str(svm_path))
+            preds["SVM"] = svm.model.predict(df).tolist()
+
+        # 3. RNN
+        rnn_path = p / "sentiment_model_RNN.pkl"
+        if rnn_path.exists():
+            print("Gathering predictions: RNN...")
+            rnn = SentimentAnalysisRNN(model_path=str(rnn_path))
+            # RNN predict expects individual row fields
+            # We'll do a batch-like approach
+            results = []
+            for _, r in df.iterrows():
+                results.append(rnn.predict(str(r.get("reviews.text", "")), str(r.get("reviews.title", ""))))
+            preds["RNN"] = results
+
+        # 4. DistilBERT
+        db_path = p / "sentiment_model_distilbert.pkl"
+        if db_path.exists():
+            print("Gathering predictions: DistilBERT...")
+            db = SentimentAnalysisDistilBERT(model_path=str(db_path))
+            combined = (df['reviews.title'].fillna('') + ' ' + df['reviews.text'].fillna('')).tolist()
+            preds["DistilBERT"] = db.predict_batch(combined)
+
+        # 5. BERT
+        bert_path = p / "sentiment_model_BERT.pkl"
+        if bert_path.exists():
+            print("Gathering predictions: BERT...")
+            bert = SentimentAnalysisBERT(model_path=str(bert_path))
+            preds["BERT"] = self._predict_bert_batch(bert, df)
+
+        # 6. RoBERTa
+        rob_path = p / "sentiment_model_roberta.pkl"
+        if rob_path.exists():
+            print("Gathering predictions: RoBERTa...")
+            rob = SentimentAnalysisHF(model_path=str(rob_path))
+            preds["RoBERTa"] = self._predict_hf_batch(rob, df)
+
+        # 7. DeBERTa
+        deb_path = p / "sentiment_model_deberta.pkl"
+        if deb_path.exists():
+            print("Gathering predictions: DeBERTa...")
+            deb = SentimentAnalysisDeBERTa(model_path=str(deb_path))
+            preds["DeBERTa"] = self._predict_hf_batch(deb, df)
+
+        return preds
+
+    def generate_comparison_reports(self, y_true, preds_by_model):
+        """Generates unified multi-model performance reports."""
+        model_names = [m for m in self.model_order if m in preds_by_model]
+        if not model_names: return
+
+        rows = []
+        for name in model_names:
+            y_p = np.array(preds_by_model[name])
+            rows.append({
+                "Model": name,
+                "Accuracy": (y_true == y_p).mean(),
+                "Weighted F1": f1_score(y_true, y_p, average="weighted", zero_division=0),
+                "Negative F1": f1_score(y_true, y_p, labels=["Negative"], average="macro", zero_division=0),
+                "Neutral F1": f1_score(y_true, y_p, labels=["Neutral"], average="macro", zero_division=0),
+                "Positive F1": f1_score(y_true, y_p, labels=["Positive"], average="macro", zero_division=0)
+            })
+        summary_df = pd.DataFrame(rows)
+
+        # 1. Heatmap
+        heat_data = summary_df.set_index("Model")[["Negative F1", "Neutral F1", "Positive F1"]]
+        heat_data.columns = ["Negative", "Neutral", "Positive"]
+        plt.figure(figsize=(10, len(model_names) * 0.6 + 2))
+        sns.heatmap(heat_data, annot=True, fmt=".3f", cmap="YlOrRd", vmin=0, vmax=1)
+        plt.title("F1 Score Heatmap — Models vs Classes")
         plt.tight_layout()
-        plt.savefig(os.path.join(self.output_dir, 'report_sentiment_overview.png'), dpi=150)
+        plt.savefig(self.output_dir / "report_multi_f1_heatmap.png", dpi=150)
         plt.close()
 
-        # --- Section 15: Word Clouds ---
-        print("Generating Section 15: Word Clouds...")
-        try:
-            from wordcloud import WordCloud
-            fig, axes = plt.subplots(1, 3, figsize=(20, 5))
-            for idx, (sent, cmap) in enumerate([('Positive','Greens'), ('Neutral','Oranges'), ('Negative','Reds')]):
-                if sent in df['sentiment'].values:
-                    text_data = ' '.join(df[df['sentiment'] == sent]['reviews.text'].fillna('').astype(str))
-                    if text_data.strip():
-                        wc = WordCloud(width=600, height=300, background_color='white', colormap=cmap, max_words=80).generate(text_data)
-                        axes[idx].imshow(wc, interpolation='bilinear')
-                        axes[idx].set_title(f'{sent} Word Cloud')
-                axes[idx].axis('off')
-            plt.tight_layout()
-            plt.savefig(os.path.join(self.output_dir, 'report_word_clouds.png'), dpi=150)
-            plt.close()
-        except Exception as e:
-            print(f"Word cloud error: {e}")
+        # 2. Accuracy Bars
+        plt.figure(figsize=(max(8, len(model_names) * 1.2), 6))
+        sns.barplot(data=summary_df, x="Model", y="Weighted F1", palette="Blues_d")
+        plt.title("Model Comparison — Weighted F1 Score")
+        plt.ylim(0, 1.05)
+        plt.tight_layout()
+        plt.savefig(self.output_dir / "report_multi_accuracy_bars.png", dpi=150)
+        plt.close()
 
-        # --- Section 16: Aspect × Product Type Heatmap ---
-        print("Generating Section 16: Aspect Heatmap...")
-        df['aspects'] = df['reviews.text'].apply(self.extract_aspects)
-        df['product_category'] = df['name'].apply(self.categorize_product)
-        df['product_type'] = df['product_category'].apply(self.get_product_type)
+        # 3. Confusion Matrix Grid
+        n = len(model_names)
+        cols = 3
+        rows_grid = int(np.ceil(n / cols))
+        fig, axes = plt.subplots(rows_grid, cols, figsize=(cols * 4, rows_grid * 3.5))
+        axes = np.atleast_1d(axes).ravel()
+        for idx, name in enumerate(model_names):
+            cm = confusion_matrix(y_true, preds_by_model[name], labels=self.label_names)
+            sns.heatmap(cm, annot=True, fmt="d", cmap="Greens", xticklabels=self.label_names, yticklabels=self.label_names, ax=axes[idx], cbar=False)
+            axes[idx].set_title(f"{name}")
+        for midx in range(idx + 1, len(axes)): axes[midx].axis('off')
+        plt.tight_layout()
+        plt.savefig(self.output_dir / "report_multi_confusion_grid.png", dpi=150)
+        plt.close()
+
+        summary_df.to_csv(self.output_dir / "metrics_summary.csv", index=False)
+
+    def plot_wordclouds(self, df):
+        """Generates word clouds for each sentiment class."""
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        for i, sentiment in enumerate(self.label_names):
+            text = " ".join(df[df['sentiment'] == sentiment]['reviews.text'].fillna('').astype(str))
+            if text.strip():
+                wc = WordCloud(width=400, height=400, background_color='white').generate(text)
+                axes[i].imshow(wc, interpolation='bilinear')
+                axes[i].set_title(f"{sentiment} Reviews")
+            axes[i].axis('off')
+        plt.tight_layout()
+        plt.savefig(self.output_dir / "report_wordclouds.png", dpi=150)
+        plt.close()
+
+    def plot_aspect_analysis(self, df):
+        """Simulated aspect-based analysis (e.g., Performance, Service, Value)."""
+        aspects = {
+            'Performance': ['fast', 'slow', 'battery', 'power', 'speed', 'quality'],
+            'Service': ['shipping', 'delivery', 'customer', 'support', 'help', 'service'],
+            'Value': ['price', 'cheap', 'expensive', 'worth', 'money', 'value']
+        }
+        results = []
+        df_text = df['reviews.text'].fillna('').str.lower()
+        for aspect, keywords in aspects.items():
+            mask = df_text.apply(lambda x: any(k in x for k in keywords))
+            sub = df[mask]
+            if not sub.empty:
+                counts = sub['sentiment'].value_counts(normalize=True).to_dict()
+                for s in self.label_names:
+                    results.append({'Aspect': aspect, 'Sentiment': s, 'Percentage': counts.get(s, 0)})
         
-        ptypes = ['Tablets', 'Smart Speakers', 'E-Readers']
-        aspect_data = []
-        for pt in ptypes:
-            subset = df[df['product_type'] == pt]
-            for asp in self.ASPECT_KEYWORDS:
-                mask = subset['aspects'].apply(lambda x: asp in x)
-                asp_subset = subset[mask]
-                pos_pct = (asp_subset['sentiment'] == 'Positive').mean() * 100 if len(asp_subset) > 0 else np.nan
-                aspect_data.append({'Product Type': pt, 'Aspect': asp, 'Positive %': pos_pct})
-        
-        ap_df = pd.DataFrame(aspect_data)
-        if not ap_df.empty:
-            ap_pivot = ap_df.pivot(index='Aspect', columns='Product Type', values='Positive %')
-            plt.figure(figsize=(10, 7))
-            sns.heatmap(ap_pivot, annot=True, fmt='.0f', cmap='RdYlGn', center=90, linewidths=0.5)
-            plt.title('Positive Sentiment % — Aspect × Product Type')
+        if results:
+            aspect_df = pd.DataFrame(results)
+            plt.figure(figsize=(10, 6))
+            sns.barplot(data=aspect_df, x='Aspect', y='Percentage', hue='Sentiment', palette={'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'})
+            plt.title("Aspect-Based Sentiment Analysis")
+            plt.ylim(0, 1.1)
             plt.tight_layout()
-            plt.savefig(os.path.join(self.output_dir, 'report_aspect_heatmap.png'), dpi=150)
+            plt.savefig(self.output_dir / "report_aspect_analysis.png", dpi=150)
             plt.close()
 
-    def run_analysis(self, csv_path, model_path=None):
-        """Load data, predict if needed, and plot."""
-        print(f"Loading data from {csv_path}...")
-        df = pd.read_csv(csv_path)
+    def generate_visualizations(self, df, model_dir="deploy_models"):
+        """The main entry point called from notebooks."""
+        print("\n--- Generating Comprehensive Sentiment Reports ---")
+        y_true = df["sentiment"].values if "sentiment" in df.columns else None
         
-        if 'sentiment' not in df.columns and model_path:
-            print(f"Predicting sentiments using model {model_path}...")
-            sa = SentimentAnalysisDistilBERT(model_path=model_path)
-            df['sentiment'] = df.apply(lambda row: sa.predict(row['reviews.text'], row.get('reviews.title', '')), axis=1)
-        elif 'sentiment' not in df.columns:
-            print("Error: 'sentiment' column missing and no model provided for prediction.")
+        # 1. Prediction comparison
+        preds = self.gather_all_predictions(df, model_dir)
+        if y_true is not None:
+            self.generate_comparison_reports(y_true, preds)
+        
+        # 2. Exploratory Analytics
+        self.plot_wordclouds(df)
+        self.plot_aspect_analysis(df)
+        
+        # 3. Display in Notebook
+        self._display_all_reports()
+
+    def _display_all_reports(self):
+        """Displays saved PNG files in a Jupyter Notebook."""
+        if not _HAS_IPYTHON:
+            print(f"Visualizations saved to {self.output_dir}")
             return
 
-        self.generate_visualizations(df)
-        print(f"Analysis complete. Plots saved to {self.output_dir}")
+        image_files = [
+            "report_multi_f1_heatmap.png",
+            "report_multi_accuracy_bars.png",
+            "report_multi_confusion_grid.png",
+            "report_wordclouds.png",
+            "report_aspect_analysis.png"
+        ]
+        
+        for img in image_files:
+            path = self.output_dir / img
+            if path.exists():
+                print(f"\nDisplaying: {img}")
+                display(Image(filename=str(path)))
+
+    def run_analysis(self, csv_path, model_dir="deploy_models"):
+        df = pd.read_csv(csv_path)
+        # Ensure text columns are strings and non-null for ML pipelines
+        if 'reviews.text' in df.columns:
+            df['reviews.text'] = df['reviews.text'].fillna('').astype(str)
+        if 'reviews.title' in df.columns:
+            df['reviews.title'] = df['reviews.title'].fillna('').astype(str)
+        self.generate_visualizations(df, model_dir=model_dir)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate Sentiment Analysis Report")
-    parser.add_argument("--csv", required=True, help="Path to input CSV file")
-    parser.add_argument("--model", help="Path to saved model .pkl file (optional if CSV has labels)")
-    parser.add_argument("--output", default="personal_update/outputs", help="Directory to save plots")
-    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--csv", required=True)
+    parser.add_argument("--multi_model_dir", default="deploy_models")
+    parser.add_argument("--output", default="personal_update/outputs")
     args = parser.parse_args()
     
     reporter = SentimentReporter(output_dir=args.output)
-    reporter.run_analysis(args.csv, args.model)
+    reporter.run_analysis(args.csv, model_dir=args.multi_model_dir)

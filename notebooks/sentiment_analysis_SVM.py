@@ -13,7 +13,7 @@ import joblib
 import warnings
 warnings.filterwarnings('ignore')
 
-import CapstoneData
+from . import CapstoneData
 
 class SentimentAnalysisSVM:
     def __init__(self, model_path: Optional[str] = None):

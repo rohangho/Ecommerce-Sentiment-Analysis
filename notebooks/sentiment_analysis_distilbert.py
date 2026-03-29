@@ -21,7 +21,7 @@ import joblib
 # Suppress warnings
 warnings.filterwarnings('ignore')
 
-import CapstoneData
+from . import CapstoneData
 
 class SentimentAnalysisDistilBERT:
     def __init__(self, model_path: Optional[str] = None):
@@ -191,6 +191,33 @@ class SentimentAnalysisDistilBERT:
         logits = self.model.predict(dataset_dict, verbose=0).logits
         predicted_class = tf.argmax(logits, axis=1).numpy()[0]
         return self.label_names[predicted_class]
+
+    def predict_batch(self, texts: list[str], batch_size: int = 16) -> list[str]:
+        """Predict sentiments for a list of texts in batches."""
+        if self.model is None or self.tokenizer is None:
+            return ["Model not loaded"] * len(texts)
+
+        all_preds = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            encodings = self.tokenizer(
+                batch,
+                add_special_tokens=True,
+                max_length=self.max_length,
+                padding='max_length',
+                truncation=True,
+                return_tensors='tf'
+            )
+            logits = self.model.predict(
+                {
+                    'input_ids':      encodings['input_ids'],
+                    'attention_mask': encodings['attention_mask'],
+                },
+                verbose=0
+            ).logits
+            preds = tf.argmax(logits, axis=1).numpy()
+            all_preds.extend([self.label_names[p] for p in preds])
+        return all_preds
 
     def persistModel(self, model_path: str) -> bool:
         """Save model, tokenizer, and metadata."""
