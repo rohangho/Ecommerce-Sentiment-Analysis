@@ -167,7 +167,6 @@ Temporary Items
 .apdisk
 
 # Project specific
-personal_update/outputs/
 models/bert/
 models/deberta/
 ~$*.xlsx

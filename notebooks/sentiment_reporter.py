@@ -218,6 +218,14 @@ class SentimentReporter:
     def generate_visualizations(self, df, model_dir="deploy_models"):
         """The main entry point called from notebooks."""
         print("\n--- Generating Comprehensive Sentiment Reports ---")
+        
+        # Ensure text columns are strings and non-null for ML pipelines and WordClouds
+        df = df.copy()
+        if 'reviews.text' in df.columns:
+            df['reviews.text'] = df['reviews.text'].fillna('').astype(str)
+        if 'reviews.title' in df.columns:
+            df['reviews.title'] = df['reviews.title'].fillna('').astype(str)
+
         y_true = df["sentiment"].values if "sentiment" in df.columns else None
         
         # 1. Prediction comparison
@@ -254,11 +262,6 @@ class SentimentReporter:
 
     def run_analysis(self, csv_path, model_dir="deploy_models"):
         df = pd.read_csv(csv_path)
-        # Ensure text columns are strings and non-null for ML pipelines
-        if 'reviews.text' in df.columns:
-            df['reviews.text'] = df['reviews.text'].fillna('').astype(str)
-        if 'reviews.title' in df.columns:
-            df['reviews.title'] = df['reviews.title'].fillna('').astype(str)
         self.generate_visualizations(df, model_dir=model_dir)
 
 if __name__ == "__main__":
