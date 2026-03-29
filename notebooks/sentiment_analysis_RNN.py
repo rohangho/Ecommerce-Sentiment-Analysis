@@ -63,8 +63,30 @@ class SentimentAnalysisRNN:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
         )
-        X_train = X_train.copy()
-        X_test = X_test.copy()
+        X_train = X_train.copy().reset_index(drop=True)
+        X_test = X_test.copy().reset_index(drop=True)
+
+        # Apply Random Oversampling to X_train and y_train
+        unique, counts = np.unique(y_train, return_counts=True)
+        max_count = np.max(counts)
+        
+        X_resampled = []
+        y_resampled = []
+        for class_idx in unique:
+            # Get indices where y_train == class_idx
+            idx = np.where(y_train == class_idx)[0]
+            # Resample with replacement to match max_count
+            resampled_idx = np.random.choice(idx, size=max_count, replace=True)
+            X_resampled.append(X_train.iloc[resampled_idx])
+            y_resampled.append(y_train[resampled_idx])
+            
+        X_train = pd.concat(X_resampled).reset_index(drop=True)
+        y_train = np.concatenate(y_resampled)
+        
+        # Shuffle the resampled data
+        shuffle_idx = np.random.permutation(len(y_train))
+        X_train = X_train.iloc[shuffle_idx].reset_index(drop=True)
+        y_train = y_train[shuffle_idx]
 
         # Prepare text data
         text_data = X_train['reviews.text'].fillna('').astype(str) + ' ' + X_train['reviews.title'].fillna('').astype(str)
@@ -134,19 +156,6 @@ class SentimentAnalysisRNN:
             ),
         ]
 
-        # Compute class weights
-        from sklearn.utils.class_weight import compute_class_weight
-        class_weights = compute_class_weight(
-            class_weight=None, # Replaced below
-            classes=np.unique(y_encoded),
-            y=y_encoded
-        )
-        class_weight_dict = {
-            self.label_encoder.transform(['Negative'])[0]: 15.0,
-            self.label_encoder.transform(['Neutral'])[0]: 5.0,
-            self.label_encoder.transform(['Positive'])[0]: 1.0
-        }
-
         # Train model
         self.model.fit(
             X_train_padded, y_train,
@@ -154,7 +163,6 @@ class SentimentAnalysisRNN:
             batch_size=batch_size,
             validation_split=0.12,
             callbacks=callbacks,
-            class_weight=class_weight_dict,
             verbose=1
         )
 
