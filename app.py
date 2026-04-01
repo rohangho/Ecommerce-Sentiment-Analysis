@@ -102,6 +102,41 @@ def get_reviews():
     reviews = subset[['reviews.title', 'reviews.text', 'sentiment']].to_dict('records')
     return jsonify(reviews)
 
+@app.route('/products')
+def products():
+    if df_data is None:
+        return "Resources not loaded correctly. Run the pipeline first."
+    
+    # Get top 50 products by review count for performance
+    top_products = df_data['name'].value_counts().head(50).index.tolist()
+    
+    product_summary = []
+    for prod in top_products:
+        if not isinstance(prod, str) or not prod.strip() or prod == 'Unknown':
+            continue
+            
+        subset = df_data[df_data['name'] == prod]
+        sentiments = subset['sentiment'].value_counts().to_dict()
+        
+        product_summary.append({
+            'name': prod,
+            'total': len(subset),
+            'positive': sentiments.get('Positive', 0),
+            'neutral': sentiments.get('Neutral', 0),
+            'negative': sentiments.get('Negative', 0)
+        })
+        
+    return render_template('products.html', products=product_summary)
+
+@app.route('/api/product-reviews', methods=['POST'])
+def get_product_reviews():
+    product_name = request.json.get('product_name')
+    sentiment = request.json.get('sentiment')
+    
+    subset = df_data[(df_data['name'] == product_name) & (df_data['sentiment'] == sentiment)]
+    reviews = subset[['reviews.title', 'reviews.text', 'sentiment']].to_dict('records')
+    return jsonify(reviews)
+
 @app.route('/predict', methods=['POST'])
 def predict():
     text = request.json.get('text', '')
