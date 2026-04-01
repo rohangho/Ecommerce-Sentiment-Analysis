@@ -184,6 +184,28 @@
         .pos-text { color: var(--positive); }
         .neu-text { color: var(--neutral); }
         .neg-text { color: var(--negative); }
+        
+        /* Navigation Links */
+        .nav-links {
+            margin-top: 1rem;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            margin: 0 0.5rem;
+            background-color: var(--secondary);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover {
+            opacity: 0.8;
+        }
+        .nav-links a.active {
+            background-color: var(--positive);
+            font-weight: bold;
+        }
 
         /* Training Progress Banner */
         #training-banner {
@@ -226,6 +248,10 @@
 
 <header>
     <h1>E-commerce Sentiment & Aspect Analysis</h1>
+    <div class="nav-links">
+        <a href="/" class="active">Aspect Dashboard</a>
+        <a href="/products">Product Dashboard</a>
+    </div>
 </header>
 
 <div class="container">

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Manager Dashboard</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --positive: #27ae60;
+            --neutral: #f39c12;
+            --negative: #e74c3c;
+            --bg: #f5f6fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+        }
+
+        /* Navigation Links */
+        .nav-links {
+            margin-top: 1rem;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            margin: 0 0.5rem;
+            background-color: var(--secondary);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover {
+            opacity: 0.8;
+        }
+        .nav-links a.active {
+            background-color: var(--positive);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            border-top: 5px solid var(--secondary);
+            text-align: center;
+        }
+        
+        .card-header h3 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            color: var(--primary);
+            min-height: 45px; /* Alignment for multiline names */
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .total-reviews {
+            font-weight: bold;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 2rem;
+            width: 70%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 1.5rem;
+            top: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .review-item {
+            border-bottom: 1px solid #eee;
+            padding: 1rem 0;
+        }
+
+        .review-sentiment {
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .pos-text { color: var(--positive); }
+        .neu-text { color: var(--neutral); }
+        .neg-text { color: var(--negative); }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>E-commerce Sentiment & Aspect Analysis</h1>
+    <div class="nav-links">
+        <a href="/">Aspect Dashboard</a>
+        <a href="/products" class="active">Product Dashboard</a>
+    </div>
+</header>
+
+<div class="container">
+    <h2>Product Manager Dashboard</h2>
+    <p>Viewing sentiment distributions for the top reviewed products. <strong>Click any chart section to instantly view the underlying raw feedback.</strong></p>
+    
+    <div class="dashboard">
+        {% for p in products %}
+        <div class="card">
+            <div class="card-header">
+                <h3>{{ p.name }}</h3>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="chart-{{ loop.index }}"></canvas>
+            </div>
+            
+            <div class="total-reviews">Total Reviews: {{ p.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="review-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">Reviews</h2>
+        <div id="reviews-container"></div>
+    </div>
+</div>
+
+<script>
+    // Initialize charts for each product safely using loop logic
+    {% for p in products %}
+    (function() {
+        const ctx = document.getElementById('chart-{{ loop.index }}').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Positive', 'Neutral', 'Negative'],
+                datasets: [{
+                    data: [{{ p.positive }}, {{ p.neutral }}, {{ p.negative }}],
+                    backgroundColor: ['#27ae60', '#f39c12', '#e74c3c'],
+                    hoverOffset: 15
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                onClick: (event, elements, chart) => {
+                    if (elements[0]) {
+                        const i = elements[0].index;
+                        const sentiment = chart.data.labels[i];
+                        showReviews({{ p.name | tojson }}, sentiment);
+                    }
+                }
+            }
+        });
+    })();
+    {% endfor %}
+
+    // Drill down fetcher
+    async function showReviews(productName, sentiment) {
+        document.getElementById('modal-title').innerText = `${sentiment} Reviews for: ${productName}`;
+        
+        const response = await fetch('/api/product-reviews', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ product_name: productName, sentiment: sentiment })
+        });
+        
+        const reviews = await response.json();
+        const container = document.getElementById('reviews-container');
+        container.innerHTML = '';
+        
+        if (reviews.length === 0) {
+            container.innerHTML = '<p>No reviews found for this section.</p>';
+        } else {
+            reviews.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'review-item';
+                const sClass = r.sentiment.toLowerCase() + '-text';
+                div.innerHTML = `
+                    <div class="review-sentiment ${sClass}">${r.sentiment}</div>
+                    <strong>${r['reviews.title']}</strong>
+                    <p>${r['reviews.text']}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        document.getElementById('review-modal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('review-modal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('review-modal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+</script>
+
+</body>
+</html>
