@@ -2,12 +2,22 @@ import os
 import time
 import shutil
 import pandas as pd
+import json
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import subprocess
 
 INCOMING_DIR = "Ecommerce_dataset/incoming"
 TRAIN_DATA_PATH = "Ecommerce_dataset/train_data.csv"
+STATUS_FILE = "Ecommerce_dataset/training_status.json"
+
+def update_status(progress, status, message):
+    with open(STATUS_FILE, "w") as f:
+        json.dump({
+            "progress": progress,
+            "status": status,
+            "message": message
+        }, f)
 
 class RetrainTriggerHandler(FileSystemEventHandler):
     def __init__(self):
@@ -26,42 +36,43 @@ class RetrainTriggerHandler(FileSystemEventHandler):
         self.is_training = True
         print("\n=== STARTING AUTOMATED RETRAINING PIPELINE ===", flush=True)
         try:
-            # 1. Merge the new data into train_data.csv
+            update_status(10, "training", "Merging incoming data with training dataset...")
             print(f"Merging {new_csv_path} into {TRAIN_DATA_PATH}...", flush=True)
             new_df = pd.read_csv(new_csv_path)
             train_df = pd.read_csv(TRAIN_DATA_PATH)
             
             combined = pd.concat([train_df, new_df], ignore_index=True)
             
-            # Create a backup before overwriting
             backup_path = TRAIN_DATA_PATH.replace(".csv", "_backup.csv")
             shutil.copy(TRAIN_DATA_PATH, backup_path)
             
             combined.to_csv(TRAIN_DATA_PATH, index=False)
             print(f"Merged successfully. Train data now has {len(combined)} rows.", flush=True)
 
-            # 2. Run the main sentiment model training pipeline
+            update_status(40, "training", "Retraining DeBERTa sentiment model...")
             print("Running train_and_validate.py...", flush=True)
-            # Using subprocess so it runs in its own memory space
             subprocess.run(["python", "train_and_validate.py"], check=True)
 
-            # 3. Run the BERTopic training script
+            update_status(80, "training", "Rebuilding BERTopic clusters...")
             print("Running train_bertopic.py...", flush=True)
             subprocess.run(["python", "train_bertopic.py"], check=True)
 
-            # 4. Cleanup the incoming file
-            processed_path = new_csv_path.replace(".csv", "_processed.csv")
-            os.rename(new_csv_path, processed_path)
+            update_status(100, "completed", "Retraining finished successfully! Reloading UI...")
+            os.remove(new_csv_path)
             print("Pipeline finished successfully! The Flask app will use the new models on its next reload.", flush=True)
+            time.sleep(3) # Hold 100% for brief UI visibility
+            update_status(0, "idle", "")
             
         except Exception as e:
             print(f"Pipeline failed: {e}", flush=True)
-            # Rollback if failed during merge
+            update_status(0, "error", f"Pipeline failed: {e}")
             if os.path.exists(TRAIN_DATA_PATH.replace(".csv", "_backup.csv")):
                 shutil.copy(TRAIN_DATA_PATH.replace(".csv", "_backup.csv"), TRAIN_DATA_PATH)
                 print("Rolled back train_data.csv due to error", flush=True)
         finally:
             self.is_training = False
+            time.sleep(5)
+            update_status(0, "idle", "")
 
 def start_watcher():
     os.makedirs(INCOMING_DIR, exist_ok=True)
@@ -73,6 +84,13 @@ def start_watcher():
     
     print(f"Started watcher on {INCOMING_DIR}. Waiting for new .csv files...", flush=True)
     
+    # Check for any lingering files that failed in the last crash and rerun them sequentially
+    for file in os.listdir(INCOMING_DIR):
+        if file.endswith(".csv"):
+            pending_path = os.path.join(INCOMING_DIR, file)
+            print(f"Found existing pending file {pending_path} on startup! Resuming pipeline...", flush=True)
+            event_handler.trigger_pipeline(pending_path)
+            
     try:
         while True:
             time.sleep(1)

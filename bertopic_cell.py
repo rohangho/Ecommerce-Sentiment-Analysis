@@ -1,5 +1,5 @@
 ## 8. Aspect-Based Sentiment Analysis with BERTopic
-Run BERTopic on the combined dataset to extract topics (aspects) for the Web UI.
+#Run BERTopic on the combined dataset to extract topics (aspects) for the Web UI.
 from bertopic import BERTopic
 import pandas as pd
 import os

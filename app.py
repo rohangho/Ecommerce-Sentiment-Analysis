@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import os
+import json
 
 # Fix for hdbscan hanging on macOS (Apple Silicon especially)
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -49,6 +50,17 @@ def load_resources():
         df_topics = pd.read_csv(TOPIC_INFO_PATH)
 
 # Routes
+@app.route('/training-status')
+def get_training_status():
+    status_file = "Ecommerce_dataset/training_status.json"
+    if os.path.exists(status_file):
+        try:
+            with open(status_file, "r") as f:
+                return jsonify(json.load(f))
+        except Exception:
+            pass
+    return jsonify({"status": "idle", "progress": 0, "message": ""})
+
 @app.route('/')
 def index():
     if df_topics is None:

@@ -185,9 +185,44 @@
         .neu-text { color: var(--neutral); }
         .neg-text { color: var(--negative); }
 
+        /* Training Progress Banner */
+        #training-banner {
+            display: none;
+            background-color: var(--secondary);
+            color: white;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        #training-msg {
+            padding: 10px;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        #training-progress-container {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(255,255,255,0.2);
+        }
+        #training-progress {
+            width: 0%;
+            height: 100%;
+            background-color: var(--positive);
+            transition: width 0.5s ease-in-out;
+        }
+
     </style>
 </head>
 <body>
+
+<div id="training-banner">
+    <div id="training-msg">Checking pipeline status...</div>
+    <div id="training-progress-container">
+        <div id="training-progress"></div>
+    </div>
+</div>
 
 <header>
     <h1>E-commerce Sentiment & Aspect Analysis</h1>
@@ -302,6 +337,41 @@
             closeModal();
         }
     }
+
+    // Auto-poll training status
+    let isTraining = false;
+    setInterval(async () => {
+        try {
+            const res = await fetch('/training-status');
+            const data = await res.json();
+            
+            const banner = document.getElementById('training-banner');
+            const msg = document.getElementById('training-msg');
+            const progress = document.getElementById('training-progress');
+            
+            if (data.status === 'training' || data.status === 'completed') {
+                banner.style.display = 'block';
+                msg.innerText = "⚙️ " + data.message + " (" + data.progress + "%)";
+                progress.style.width = data.progress + '%';
+                
+                if (data.status === 'completed') {
+                    // Refresh the page automatically after finish so the UI has new topics/data
+                    setTimeout(() => location.reload(), 3000);
+                }
+                isTraining = true;
+            } else if (data.status === 'error') {
+                banner.style.display = 'block';
+                banner.style.backgroundColor = 'var(--negative)';
+                msg.innerText = "❌ " + data.message;
+                progress.style.width = '100%';
+            } else if (data.status === 'idle') {
+                banner.style.display = 'none';
+            }
+        } catch (e) {
+            console.error('Error fetching training status', e);
+        }
+    }, 2500);
+
 </script>
 
 </body>
