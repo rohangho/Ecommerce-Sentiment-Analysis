@@ -1,0 +1,2 @@
+name,brand,categories,primaryCategories,reviews.date,reviews.text,reviews.title,sentiment
+"Mock Echo Dot",Amazon,Electronics,Electronics,2026-03-31T00:00:00.000Z,"This is a fantastic test device! The sound quality is unexpectedly great and it seamlessly integrated into my automated retraining pipeline without a hitch.","Amazing test sample",Positive
