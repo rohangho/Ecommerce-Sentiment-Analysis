@@ -92,10 +92,10 @@ def train_all_models(df: pd.DataFrame, out_dir: Path) -> dict:
     results["SVM"] = svm.train(df.copy())
     svm.persistModel(str(out_dir / "sentiment_model_SVM.pkl"))
 
-    print("\n--- Training RNN ---")
-    rnn = SentimentAnalysisRNN()
-    results["RNN"] = rnn.train(df.copy(), epochs=24, batch_size=32)
-    rnn.persistModel(str(out_dir / "sentiment_model_RNN.pkl"))
+    # print("\n--- Training RNN ---")
+    # rnn = SentimentAnalysisRNN()
+    # results["RNN"] = rnn.train(df.copy(), epochs=24, batch_size=32)
+    # rnn.persistModel(str(out_dir / "sentiment_model_RNN.pkl"))
 
     print("\n--- Training DistilBERT ---")
     db = SentimentAnalysisDistilBERT()
