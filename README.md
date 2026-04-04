@@ -65,6 +65,43 @@ python validate_deploy_models.py --deploy-dir deploy_models --test-csv Ecommerce
 | `accuracy_by_model.png` | Accuracy bar chart |
 
 The notebook **Section 2** (`train_and_validate.run_pipeline(eda.df)`) performs the same training + validation + plot export.
+ 
+## Docker Deployment
+ 
+For a fully automated, containerized workflow with background training, use Docker Compose.
+ 
+### 1. Start the Containers
+ 
+```bash
+# Build and start all services in the background
+docker-compose up -d --build
+ 
+# Start services without rebuilding (faster for subsequent runs)
+docker-compose up -d
+```
+ 
+### 2. Monitor Logs
+ 
+```bash
+# View logs for both web and trainer (follow mode)
+docker-compose logs -f
+ 
+# View only training progress logs
+docker-compose logs -f trainer
+ 
+# View only web server logs
+docker-compose logs -f web
+```
+ 
+### 3. Usage
+- **Web Interface**: Open [http://localhost:5001](http://localhost:5001)
+- **Automatic Retraining**: Drop a new CSV file into `Ecommerce_dataset/incoming/new.data.csv`. The `trainer` container will automatically detect it and start retraining.
+ 
+### 4. Stop the Containers
+ 
+```bash
+docker-compose down
+```
 
 ### Training hyperparameters (defaults)
 

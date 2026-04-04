@@ -29,12 +29,26 @@ docker-compose up -d --build
 Open your web browser and go to:
 **http://localhost:5001**
 
-### Step 4: Automate Retraining
+### Step 4: How to View Logs (Important)
+Since the containers run in the background (detached mode), you can monitor the web server and training progress with these commands:
+
+```bash
+# View combined logs for both web and trainer
+docker-compose logs -f
+
+# View ONLY training/retraining logs
+docker-compose logs -f trainer
+
+# View ONLY web server logs
+docker-compose logs -f web
+```
+
+### Step 5: Automate Retraining
 1. Create a directory named `incoming` inside your dataset folder if it does not yet exist: 
    `mkdir -p Ecommerce_dataset/incoming/`
 2. Drop your new data file into `Ecommerce_dataset/incoming/` and name it **exactly** `new.data.csv`.
-3. Keep an eye on the backend! The `trainer` container will grab the file, merge and backup your overall `train_data.csv`, and execute `train_and_validate.py` followed by `train_bertopic.py`. 
-4. Once completed, the containers will naturally load the fresh models over your local volume mapping.
+3. Monitor the logs (`docker-compose logs -f trainer`)! The `trainer` container will grab the file, merge it, and start retraining.
+4. Once completed, the containers will automatically serve the fresh models.
 
 ## Stopping the Server
 To shut down the web server and the background watcher, simply run:
