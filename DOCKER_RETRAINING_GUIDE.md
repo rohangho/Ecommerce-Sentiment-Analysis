@@ -55,3 +55,16 @@ To shut down the web server and the background watcher, simply run:
 ```bash
 docker-compose down
 ```
+
+## 3. Windows & Non-Mac Support
+
+The project is optimized for both macOS and Windows/Linux. 
+
+### Local (Non-Docker) Environment
+If you are on **Windows** and want to run the project locally (without Docker):
+1.  Use `requirements.windows.txt` instead of the default `requirements.txt`.
+2.  Install with: `pip install -r requirements.windows.txt`
+3.  **Note:** Standard `tensorflow==2.16.2` replaces the macOS-specific components (`tensorflow-macos` and `tensorflow-metal`).
+
+### Docker Environment (Recommended)
+Docker Compose automatically handles the environment differences. The `requirements.docker.txt` already uses standard `tensorflow==2.16.2`, which is compatible with Windows, Mac, and Linux. Just run `docker-compose up -d --build` as usual.
