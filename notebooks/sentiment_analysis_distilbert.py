@@ -88,7 +88,7 @@ class SentimentAnalysisDistilBERT:
         
         return dataset.batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
 
-    def train(self, data, epochs: int = 4, learning_rate: float = 2e-5, warmup_ratio: float = 0.12) -> float:
+    def train(self, data, epochs: int = 4, learning_rate: float = 2e-5, warmup_ratio: float = 0.12) -> dict:
         """Full training pipeline for DistilBERT."""
         self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
@@ -144,7 +144,7 @@ class SentimentAnalysisDistilBERT:
 
         # Train
         print(f"Starting training for {epochs} epochs...")
-        self.model.fit(
+        history = self.model.fit(
             train_ds, 
             validation_data=val_ds, 
             epochs=epochs,
@@ -154,7 +154,20 @@ class SentimentAnalysisDistilBERT:
         # Evaluate
         loss, accuracy = self.model.evaluate(val_ds)
         print(f"Final Validation Accuracy: {accuracy:.4f}")
-        return accuracy
+        
+        # Build training metadata package
+        metadata = {
+            "validation_accuracy": float(accuracy),
+            "training_samples": len(train_texts),
+            "validation_samples": len(val_texts),
+            "epochs": epochs,
+            "batch_size": self.batch_size,
+            "learning_rate": learning_rate,
+            "max_length": self.max_length,
+            "class_weights": {self.label_names[k]: float(v) for k, v in class_weight_dict.items()},
+            "training_history": history.history
+        }
+        return metadata
 
     def preprocess_data(self) -> None:
         """Preprocess training data — matches Logistic/SVM/BERT/RNN interface."""

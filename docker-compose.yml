@@ -13,6 +13,7 @@ services:
       - ./notebooks:/app/notebooks
       - ./static:/app/static
       - ./templates:/app/templates
+      - ./seed_topics.json:/app/seed_topics.json
     environment:
       - PYTHONPATH=/app
       - OMP_NUM_THREADS=1
@@ -30,6 +31,7 @@ services:
       - ./train_and_validate.py:/app/train_and_validate.py
       - ./train_bertopic.py:/app/train_bertopic.py
       - ./watch_and_train.py:/app/watch_and_train.py
+      - ./seed_topics.json:/app/seed_topics.json
     environment:
       - PYTHONPATH=/app
       - OMP_NUM_THREADS=1

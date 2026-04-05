@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import os
+import re
 import json
 import numpy as np
 
@@ -32,6 +33,46 @@ topic_model = None
 df_data = None
 df_topics = None
 fallback_sentiment = None  # Cardiff RoBERTa fallback for low-confidence DeBERTa predictions
+aspect_lookup = []  # loaded from seed_topics.json for multi-aspect extraction
+
+SEED_TOPICS_FILE = "seed_topics.json"
+
+def load_seed_aspects():
+    """Load seed_topics.json and build lookup table for keyword → aspect name.
+    Returns a list of dicts: [{name, keywords, pattern}, ...]
+    """
+    aspects = []
+    if not os.path.exists(SEED_TOPICS_FILE):
+        print(f"WARNING: {SEED_TOPICS_FILE} not found — aspect extraction will use BERTopic only.")
+        return aspects
+    with open(SEED_TOPICS_FILE, "r") as f:
+        data = json.load(f)
+    for entry in data["aspects"]:
+        # Sort keywords longest-first so "battery life" matches before "battery"
+        kws = sorted(entry["keywords"], key=len, reverse=True)
+        # Build a single regex pattern: \b(keyword1|keyword2|...)\b
+        escaped = [re.escape(k) for k in kws]
+        pattern = re.compile(r'\b(' + '|'.join(escaped) + r')\b', re.IGNORECASE)
+        aspects.append({
+            'name': entry['name'],
+            'keywords': kws,
+            'pattern': pattern,
+        })
+    print(f"Loaded {len(aspects)} aspect definitions from {SEED_TOPICS_FILE}")
+    return aspects
+
+
+def extract_aspects(text: str) -> list:
+    """Scan text for ALL mentioned aspects using keyword matching.
+    Returns a list of aspect names found in the text.
+    Falls back to empty list if nothing matches (caller should use BERTopic then).
+    """
+    found = []
+    text_lower = text.lower()
+    for aspect in aspect_lookup:
+        if aspect['pattern'].search(text_lower):
+            found.append(aspect['name'])
+    return found
 
 # DeBERTa label order: class_names = ['Negative', 'Neutral', 'Positive']
 # Cardiff label mapping: LABEL_0 -> Negative, LABEL_1 -> Neutral, LABEL_2 -> Positive
@@ -67,8 +108,11 @@ CARDIFF_LABEL_MAP = {'LABEL_0': 'Negative', 'LABEL_1': 'Neutral', 'LABEL_2': 'Po
 DEBERTA_CONFIDENCE_THRESHOLD = 0.65  # Use fallback if DeBERTa top-class prob < this
 
 def load_resources():
-    global sentiment_model, topic_model, df_data, df_topics, fallback_sentiment
+    global sentiment_model, topic_model, df_data, df_topics, fallback_sentiment, aspect_lookup
     print("Loading resources... this might take a minute...")
+    
+    # 0. Aspect lookup table (for multi-aspect extraction)
+    aspect_lookup = load_seed_aspects()
     
     # 1. Sentiment Model (DeBERTa fine-tuned)
     sentiment_model = SentimentAnalysisDeBERTa(model_path=MODEL_PKL)
@@ -249,20 +293,28 @@ def predict():
 
     print(f"[predict] text='{text[:60]}' model={model_used} sentiment={sentiment}")
 
-    # 2. Aspect (Topic)
-    topics, probs = topic_model.transform([text])
-    topic_id = topics[0]
+    # 2. Multi-Aspect Extraction
+    #    First try keyword matching from seed_topics.json (returns ALL aspects)
+    #    Fall back to BERTopic single-topic if no keywords match
+    aspects = extract_aspects(text)
     
-    # Find topic name
-    topic_name = "General/Mixed"
-    if df_topics is not None:
-        match = df_topics[df_topics['Topic'] == topic_id]
-        if not match.empty:
-            topic_name = clean_topic_name(match.iloc[0]['Name'])
+    if not aspects:
+        # No keyword hits — fall back to BERTopic
+        topics, probs = topic_model.transform([text])
+        topic_id = topics[0]
+        topic_name = "General/Mixed"
+        if df_topics is not None:
+            match = df_topics[df_topics['Topic'] == topic_id]
+            if not match.empty:
+                topic_name = clean_topic_name(match.iloc[0]['Name'])
+        aspects = [topic_name]
+
+    print(f"[predict] aspects={aspects}")
             
     return jsonify({
         'sentiment': sentiment,
-        'aspect': topic_name
+        'aspect': ', '.join(aspects),
+        'aspects': aspects,
     })
 
 if __name__ == '__main__':

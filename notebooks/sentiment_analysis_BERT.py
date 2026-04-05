@@ -46,7 +46,7 @@ class SentimentAnalysisBERT:
         epochs: int = 4,
         learning_rate: float = 2e-5,
         warmup_ratio: float = 0.12,
-    ) -> float:
+    ) -> dict:
         """Train BERT model for sentiment analysis using TensorFlow"""
         self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
@@ -128,7 +128,7 @@ class SentimentAnalysisBERT:
 
         # Training
         print("Starting training...")
-        self.model.fit(
+        history = self.model.fit(
             train_dataset,
             validation_data=test_dataset,
             epochs=epochs,
@@ -140,7 +140,19 @@ class SentimentAnalysisBERT:
         loss, accuracy = self.model.evaluate(test_dataset)
         print(f"Test Accuracy: {accuracy:.4f}")
 
-        return accuracy
+        # Build training metadata package
+        metadata = {
+            "validation_accuracy": float(accuracy),
+            "training_samples": len(texts_train),
+            "validation_samples": len(texts_test),
+            "epochs": epochs,
+            "batch_size": self.batch_size,
+            "learning_rate": learning_rate,
+            "max_length": self.max_len,
+            "class_weights": {self.class_names[k]: float(v) for k, v in class_weight_dict.items()},
+            "training_history": history.history
+        }
+        return metadata
 
     def persistModel(self, model_path: str) -> bool:
         """Save model, tokenizer, and metadata"""

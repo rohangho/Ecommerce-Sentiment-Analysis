@@ -77,6 +77,18 @@
             border: 1px solid #ddd;
         }
 
+        .aspect-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.35rem 0.8rem;
+            margin: 0.2rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
         .dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -262,8 +274,9 @@
         <button class="btn" onclick="predictSentiment()">Analyze Text</button>
         
         <div id="result-box" class="result-box">
-            <strong>Sentiment:</strong> <span id="res-sentiment"></span><br>
-            <strong>Related Aspect:</strong> <span id="res-aspect"></span>
+            <strong>Sentiment:</strong> <span id="res-sentiment"></span><br><br>
+            <strong>Detected Aspects:</strong>
+            <div id="res-aspects" style="margin-top: 0.5rem;"></div>
         </div>
     </div>
 
@@ -323,7 +336,10 @@
         s.innerText = data.sentiment;
         s.className = data.sentiment.toLowerCase() + '-text';
         
-        document.getElementById('res-aspect').innerText = data.aspect;
+        // Render aspect tags
+        const aspectsDiv = document.getElementById('res-aspects');
+        const aspects = data.aspects || [data.aspect];
+        aspectsDiv.innerHTML = aspects.map(a => `<span class="aspect-tag">${a}</span>`).join(' ');
     }
 
     async function showReviews(topicId, productName) {

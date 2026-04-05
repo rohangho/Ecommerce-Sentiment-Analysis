@@ -61,7 +61,7 @@ class SentimentAnalysisDeBERTa:
         learning_rate: float = 2e-5,
         warmup_ratio: float = 0.12,
         weight_decay: float = 0.02,
-    ) -> float:
+    ) -> dict:
         """Fine-tune on downstream 3-class sentiment (reviews + titles)."""
         self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
@@ -150,15 +150,28 @@ class SentimentAnalysisDeBERTa:
         class_weight_dict = dict(enumerate(class_weights))
 
         print(f"Starting fine-tuning ({epochs} epochs)...")
-        self.model.fit(
+        history = self.model.fit(
             train_ds,
             validation_data=val_ds,
             epochs=epochs,
             class_weight=class_weight_dict
         )
-        _, acc = self.model.evaluate(val_ds, verbose=0)
+        loss, acc = self.model.evaluate(val_ds, verbose=0)
         print(f"Validation accuracy: {acc:.4f}")
-        return float(acc)
+        
+        # Build training metadata package
+        metadata = {
+            "validation_accuracy": float(acc),
+            "training_samples": len(texts_train),
+            "validation_samples": len(texts_val),
+            "epochs": epochs,
+            "batch_size": self.batch_size,
+            "learning_rate": learning_rate,
+            "max_length": self.max_len,
+            "class_weights": {self.class_names[k]: float(v) for k, v in class_weight_dict.items()},
+            "training_history": history.history
+        }
+        return metadata
 
     def predict(
         self,

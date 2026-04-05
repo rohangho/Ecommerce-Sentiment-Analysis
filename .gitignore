@@ -173,7 +173,6 @@ models/deberta/
 
 # Training / validation pipeline outputs (train_and_validate.py, validate_deploy_models.py)
 deploy_models/
-validation_outputs/
 
 # Hugging Face hub cache if pointed at the repo root
 .huggingface/

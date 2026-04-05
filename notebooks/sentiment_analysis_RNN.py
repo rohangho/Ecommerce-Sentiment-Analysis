@@ -50,7 +50,7 @@ class SentimentAnalysisRNN:
         if model_path:
             self.load_model(model_path)
 
-    def train(self, data, epochs: int = 24, batch_size: int = 32) -> float:
+    def train(self, data, epochs: int = 24, batch_size: int = 32) -> dict:
         self.train_data = CapstoneData.DataExploration(data)
         self.preprocess_data()
 
@@ -159,8 +159,12 @@ class SentimentAnalysisRNN:
             ),
         ]
 
+        # Calculate class weights for mapping to metadata later (they are balanced implicitly by resample here)
+        unique_classes = np.unique(y_encoded)
+        class_weight_dict = {str(self.class_names[c]): float(max_count/len(y_train)) for c in unique_classes}
+
         # Train model
-        self.model.fit(
+        history = self.model.fit(
             X_train_padded, y_train,
             epochs=epochs,
             batch_size=batch_size,
@@ -170,8 +174,21 @@ class SentimentAnalysisRNN:
         )
 
         # Evaluate on test set
-        _, test_accuracy = self.model.evaluate(X_test_padded, y_test, verbose=0)
-        return test_accuracy
+        loss, test_accuracy = self.model.evaluate(X_test_padded, y_test, verbose=0)
+        
+        # Build training metadata package
+        metadata = {
+            "validation_accuracy": float(test_accuracy),
+            "training_samples": len(X_train),
+            "validation_samples": int(len(X_train) * 0.12),
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "learning_rate": 8e-4,
+            "max_length": self.max_len,
+            "class_weights": class_weight_dict,
+            "training_history": history.history
+        }
+        return metadata
 
     def persistModel(self, model_path: str) -> bool:
         if self.model is not None:

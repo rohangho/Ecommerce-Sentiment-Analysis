@@ -1,0 +1,61 @@
+{
+  "_comment": "Each entry is a seed aspect. Add/remove/edit entries anytime — no code changes needed. Just retrain BERTopic after editing.",
+  "aspects": [
+    {
+      "name": "Battery",
+      "keywords": ["battery", "battery life", "charge", "charging", "charger", "mah", "power bank"]
+    },
+    {
+      "name": "Display",
+      "keywords": ["screen", "display", "resolution", "brightness", "touchscreen", "lcd", "retina", "hd"]
+    },
+    {
+      "name": "RAM",
+      "keywords": ["ram", "memory", "gb ram", "ddr", "multitasking"]
+    },
+    {
+      "name": "Storage",
+      "keywords": ["ssd", "storage", "hard drive", "disk", "space", "internal storage", "sd card", "micro sd"]
+    },
+    {
+      "name": "Camera",
+      "keywords": ["camera", "photos", "photo", "picture", "pictures", "megapixel", "lens", "selfie", "video recording"]
+    },
+    {
+      "name": "Audio",
+      "keywords": ["speaker", "speakers", "sound", "audio", "bass", "volume", "headphone", "headphones", "earbuds"]
+    },
+    {
+      "name": "Performance",
+      "keywords": ["processor", "cpu", "speed", "fast", "performance", "quad core", "lag", "slow", "loading"]
+    },
+    {
+      "name": "Connectivity",
+      "keywords": ["wifi", "wi-fi", "bluetooth", "wireless", "connectivity", "internet", "connection", "signal"]
+    },
+    {
+      "name": "Keyboard",
+      "keywords": ["keyboard", "keys", "typing", "trackpad", "touchpad", "mouse"]
+    },
+    {
+      "name": "Build & Design",
+      "keywords": ["build", "design", "weight", "lightweight", "heavy", "slim", "thin", "portable", "durable", "sturdy"]
+    },
+    {
+      "name": "Software",
+      "keywords": ["software", "apps", "app", "operating system", "android", "ios", "update", "firmware", "alexa"]
+    },
+    {
+      "name": "Price & Value",
+      "keywords": ["price", "value", "affordable", "cheap", "expensive", "worth", "money", "deal", "bang for buck"]
+    },
+    {
+      "name": "Setup",
+      "keywords": ["setup", "install", "installation", "easy setup", "configuration", "pairing", "pair"]
+    },
+    {
+      "name": "Support & Warranty",
+      "keywords": ["warranty", "return", "refund", "defective", "broken", "replacement", "customer service", "support"]
+    }
+  ]
+}
