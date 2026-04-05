@@ -10,7 +10,7 @@ services:
       - ./app.py:/app/app.py
       - ./Ecommerce_dataset:/app/Ecommerce_dataset
       - ./deploy_models:/app/deploy_models
-      - ./notebooks:/app/notebooks
+      - ./src:/app/src
       - ./static:/app/static
       - ./templates:/app/templates
       - ./seed_topics.json:/app/seed_topics.json
@@ -28,6 +28,7 @@ services:
     volumes:
       - ./Ecommerce_dataset:/app/Ecommerce_dataset
       - ./deploy_models:/app/deploy_models
+      - ./src:/app/src
       - ./train_and_validate.py:/app/train_and_validate.py
       - ./train_bertopic.py:/app/train_bertopic.py
       - ./watch_and_train.py:/app/watch_and_train.py

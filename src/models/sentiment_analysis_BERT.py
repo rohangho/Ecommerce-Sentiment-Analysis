@@ -11,10 +11,7 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
-try:
-    from . import CapstoneData
-except (ImportError, ValueError):
-    import CapstoneData
+from src.data import CapstoneData
 
 class SentimentAnalysisBERT:
     def __init__(self, model_path: Optional[str] = None):

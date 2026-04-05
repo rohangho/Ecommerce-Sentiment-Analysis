@@ -8,11 +8,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from sklearn.metrics import f1_score
 
-from notebooks.sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
-from notebooks.sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
-from notebooks.sentiment_analysis_BERT import SentimentAnalysisBERT
-from notebooks.sentiment_analysis_Roberta import SentimentAnalysisHF
-from notebooks.sentiment_analysis_RNN import SentimentAnalysisRNN
+from src.models.sentiment_analysis_distilbert import SentimentAnalysisDistilBERT
+from src.models.sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
+from src.models.sentiment_analysis_BERT import SentimentAnalysisBERT
+from src.models.sentiment_analysis_Roberta import SentimentAnalysisHF
+from src.models.sentiment_analysis_RNN import SentimentAnalysisRNN
 
 def main():
     print("Preparing subset extraction for model retraining execution...")

@@ -14,8 +14,9 @@ import tensorflow as tf
 from pathlib import Path
 from bertopic import BERTopic
 
-# Add notebooks to sys.path for model class imports
-sys.path.insert(0, os.path.abspath('notebooks'))
+# Add src to sys.path for model class imports
+sys.path.insert(0, os.path.abspath('src/models'))
+sys.path.insert(0, os.path.abspath('src/data'))
 from sentiment_analysis_DeBERTa import SentimentAnalysisDeBERTa
 
 app = Flask(__name__)

@@ -27,8 +27,10 @@ from sklearn.metrics import (
 )
 
 ROOT = Path(__file__).resolve().parent
-NOTEBOOKS = ROOT / "notebooks"
-sys.path.insert(0, str(NOTEBOOKS))
+SRC_MODELS = ROOT / "src" / "models"
+SRC_DATA = ROOT / "src" / "data"
+sys.path.insert(0, str(SRC_MODELS))
+sys.path.insert(0, str(SRC_DATA))
 
 os.chdir(ROOT)
 

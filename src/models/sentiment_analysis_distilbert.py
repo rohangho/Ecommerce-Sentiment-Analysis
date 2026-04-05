@@ -21,10 +21,7 @@ import joblib
 # Suppress warnings
 warnings.filterwarnings('ignore')
 
-try:
-    from . import CapstoneData
-except (ImportError, ValueError):
-    import CapstoneData
+from src.data import CapstoneData
 
 class SentimentAnalysisDistilBERT:
     def __init__(self, model_path: Optional[str] = None):
