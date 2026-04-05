@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: ecommerce-sentiment-web
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./app.py:/app/app.py
+      - ./Ecommerce_dataset:/app/Ecommerce_dataset
+      - ./deploy_models:/app/deploy_models
+      - ./src:/app/src
+      - ./static:/app/static
+      - ./templates:/app/templates
+      - ./seed_topics.json:/app/seed_topics.json
+    environment:
+      - PYTHONPATH=/app
+      - OMP_NUM_THREADS=1
+      - TOKENIZERS_PARALLELISM=false
+      - FLASK_RUN_PORT=5001
+      - FLASK_RUN_HOST=0.0.0.0
+    command: ["python", "app.py"]
+
+  trainer:
+    build: .
+    container_name: ecommerce-sentiment-trainer
+    volumes:
+      - ./Ecommerce_dataset:/app/Ecommerce_dataset
+      - ./deploy_models:/app/deploy_models
+      - ./src:/app/src
+      - ./train_and_validate.py:/app/train_and_validate.py
+      - ./train_bertopic.py:/app/train_bertopic.py
+      - ./watch_and_train.py:/app/watch_and_train.py
+      - ./seed_topics.json:/app/seed_topics.json
+    environment:
+      - PYTHONPATH=/app
+      - OMP_NUM_THREADS=1
+      - TOKENIZERS_PARALLELISM=false
+    command: ["python", "-u", "watch_and_train.py"]

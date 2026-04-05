@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment & Aspect Analysis Dashboard</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --positive: #27ae60;
+            --neutral: #f39c12;
+            --negative: #e74c3c;
+            --bg: #f5f6fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .predictor-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .predictor-section textarea {
+            width: 100%;
+            height: 100px;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary);
+        }
+
+        .result-box {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+            border: 1px solid #ddd;
+        }
+
+        .aspect-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.35rem 0.8rem;
+            margin: 0.2rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+            border-top: 5px solid var(--secondary);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--secondary);
+        }
+
+        .sentiment-bar {
+            height: 10px;
+            width: 100%;
+            background-color: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            margin: 1rem 0;
+        }
+
+        .bar-pos { background-color: var(--positive); height: 100%; }
+        .bar-neu { background-color: var(--neutral); height: 100%; }
+        .bar-neg { background-color: var(--negative); height: 100%; }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .product-list {
+            margin-top: 1rem;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+        }
+
+        .product-tag {
+            display: inline-block;
+            background: #edf2f7;
+            padding: 0.3rem 0.6rem;
+            margin: 0.2rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .product-tag:hover {
+            background: #cbd5e0;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 2rem;
+            width: 70%;
+            max-height: 70vh;
+            overflow-y: auto;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 1.5rem;
+            top: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .review-item {
+            border-bottom: 1px solid #eee;
+            padding: 1rem 0;
+        }
+
+        .review-sentiment {
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .pos-text { color: var(--positive); }
+        .neu-text { color: var(--neutral); }
+        .neg-text { color: var(--negative); }
+        
+        /* Navigation Links */
+        .nav-links {
+            margin-top: 1rem;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            margin: 0 0.5rem;
+            background-color: var(--secondary);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover {
+            opacity: 0.8;
+        }
+        .nav-links a.active {
+            background-color: var(--positive);
+            font-weight: bold;
+        }
+
+        /* Training Progress Banner */
+        #training-banner {
+            display: none;
+            background-color: var(--secondary);
+            color: white;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        #training-msg {
+            padding: 10px;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        #training-progress-container {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(255,255,255,0.2);
+        }
+        #training-progress {
+            width: 0%;
+            height: 100%;
+            background-color: var(--positive);
+            transition: width 0.5s ease-in-out;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="training-banner">
+    <div id="training-msg">Checking pipeline status...</div>
+    <div id="training-progress-container">
+        <div id="training-progress"></div>
+    </div>
+</div>
+
+<header>
+    <h1>E-commerce Sentiment & Aspect Analysis</h1>
+    <div class="nav-links">
+        <a href="/" class="active">Aspect Dashboard</a>
+        <a href="/products">Product Dashboard</a>
+    </div>
+</header>
+
+<div class="container">
+    <div class="predictor-section">
+        <h2>Try it Yourself</h2>
+        <p>Enter a review text to see the predicted sentiment and the related aspect (topic).</p>
+        <textarea id="user-input" placeholder="Type your review here... e.g., 'The battery life is amazing, but the screen is a bit dim.'"></textarea>
+        <button class="btn" onclick="predictSentiment()">Analyze Text</button>
+        
+        <div id="result-box" class="result-box">
+            <strong>Sentiment:</strong> <span id="res-sentiment"></span><br><br>
+            <strong>Detected Aspects:</strong>
+            <div id="res-aspects" style="margin-top: 0.5rem;"></div>
+        </div>
+    </div>
+
+    <h2>Aspect-Based Sentiment Distribution</h2>
+    <div class="dashboard">
+        {% for topic in topics %}
+        <div class="card">
+            <h3>{{ topic.name }}</h3>
+            <div class="stats">
+                <span>Total: {{ topic.count }}</span>
+                <span class="pos-text">P: {{ topic.positive }}</span>
+                <span class="neu-text">N: {{ topic.neutral }}</span>
+                <span class="neg-text">X: {{ topic.negative }}</span>
+            </div>
+            
+            <div class="sentiment-bar">
+                <div class="bar-pos" style="width: {{ (topic.positive / topic.count * 100) }}%"></div>
+                <div class="bar-neu" style="width: {{ (topic.neutral / topic.count * 100) }}%"></div>
+                <div class="bar-neg" style="width: {{ (topic.negative / topic.count * 100) }}%"></div>
+            </div>
+
+            <div class="product-list">
+                <strong>Related Products:</strong><br>
+                {% for prod in topic.products %}
+                <span class="product-tag" onclick="showReviews({{ topic.id }}, '{{ prod }}')">{{ prod }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="review-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">Reviews</h2>
+        <div id="reviews-container"></div>
+    </div>
+</div>
+
+<script>
+    async function predictSentiment() {
+        const text = document.getElementById('user-input').value;
+        if (!text) return;
+
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text: text})
+        });
+        const data = await response.json();
+        
+        const box = document.getElementById('result-box');
+        box.style.display = 'block';
+        
+        const s = document.getElementById('res-sentiment');
+        s.innerText = data.sentiment;
+        s.className = data.sentiment.toLowerCase() + '-text';
+        
+        // Render aspect tags
+        const aspectsDiv = document.getElementById('res-aspects');
+        const aspects = data.aspects || [data.aspect];
+        aspectsDiv.innerHTML = aspects.map(a => `<span class="aspect-tag">${a}</span>`).join(' ');
+    }
+
+    async function showReviews(topicId, productName) {
+        document.getElementById('modal-title').innerText = `Reviews for: ${productName}`;
+        const response = await fetch('/get_reviews', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({topic_id: topicId, product_name: productName})
+        });
+        const reviews = await response.json();
+        
+        const container = document.getElementById('reviews-container');
+        container.innerHTML = '';
+        
+        reviews.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'review-item';
+            const sClass = r.sentiment.toLowerCase() + '-text';
+            div.innerHTML = `
+                <div class="review-sentiment ${sClass}">${r.sentiment}</div>
+                <strong>${r['reviews.title']}</strong>
+                <p>${r['reviews.text']}</p>
+            `;
+            container.appendChild(div);
+        });
+        
+        document.getElementById('review-modal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('review-modal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('review-modal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+
+    // Auto-poll training status
+    let isTraining = false;
+    setInterval(async () => {
+        try {
+            const res = await fetch('/training-status');
+            const data = await res.json();
+            
+            const banner = document.getElementById('training-banner');
+            const msg = document.getElementById('training-msg');
+            const progress = document.getElementById('training-progress');
+            
+            if (data.status === 'training' || data.status === 'completed') {
+                banner.style.display = 'block';
+                msg.innerText = "⚙️ " + data.message + " (" + data.progress + "%)";
+                progress.style.width = data.progress + '%';
+                
+                if (data.status === 'completed') {
+                    // Refresh the page automatically after finish so the UI has new topics/data
+                    setTimeout(() => location.reload(), 3000);
+                }
+                isTraining = true;
+            } else if (data.status === 'error') {
+                banner.style.display = 'block';
+                banner.style.backgroundColor = 'var(--negative)';
+                msg.innerText = "❌ " + data.message;
+                progress.style.width = '100%';
+            } else if (data.status === 'idle') {
+                banner.style.display = 'none';
+            }
+        } catch (e) {
+            console.error('Error fetching training status', e);
+        }
+    }, 2500);
+
+</script>
+
+</body>
+</html>

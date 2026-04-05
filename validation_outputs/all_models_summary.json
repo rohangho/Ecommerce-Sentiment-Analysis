@@ -1,0 +1,134 @@
+[
+  {
+    "model": "Logistic",
+    "test_accuracy": 0.9378,
+    "test_f1_macro": 0.5606,
+    "class_performance": {
+      "Negative": {
+        "precision": 0.3333,
+        "recall": 0.5417,
+        "f1": 0.4127
+      },
+      "Neutral": {
+        "precision": 0.875,
+        "recall": 0.1795,
+        "f1": 0.2979
+      },
+      "Positive": {
+        "precision": 0.9632,
+        "recall": 0.9797,
+        "f1": 0.9713
+      }
+    }
+  },
+  {
+    "model": "SVM",
+    "test_accuracy": 0.9529,
+    "test_f1_macro": 0.6031,
+    "class_performance": {
+      "Negative": {
+        "precision": 1.0,
+        "recall": 0.3333,
+        "f1": 0.5
+      },
+      "Neutral": {
+        "precision": 0.8889,
+        "recall": 0.2051,
+        "f1": 0.3333
+      },
+      "Positive": {
+        "precision": 0.9531,
+        "recall": 1.0,
+        "f1": 0.976
+      }
+    }
+  },
+  {
+    "model": "DistilBERT",
+    "test_accuracy": 0.9589,
+    "test_f1_macro": 0.6757,
+    "class_performance": {
+      "Negative": {
+        "precision": 0.6296,
+        "recall": 0.7083,
+        "f1": 0.6667
+      },
+      "Neutral": {
+        "precision": 0.7143,
+        "recall": 0.2564,
+        "f1": 0.3774
+      },
+      "Positive": {
+        "precision": 0.9718,
+        "recall": 0.9946,
+        "f1": 0.9831
+      }
+    }
+  },
+  {
+    "model": "BERT",
+    "test_accuracy": 0.9559,
+    "test_f1_macro": 0.6573,
+    "class_performance": {
+      "Negative": {
+        "precision": 0.5556,
+        "recall": 0.625,
+        "f1": 0.5882
+      },
+      "Neutral": {
+        "precision": 0.5714,
+        "recall": 0.3077,
+        "f1": 0.4
+      },
+      "Positive": {
+        "precision": 0.9758,
+        "recall": 0.9914,
+        "f1": 0.9835
+      }
+    }
+  },
+  {
+    "model": "RoBERTa",
+    "test_accuracy": 0.9589,
+    "test_f1_macro": 0.6748,
+    "class_performance": {
+      "Negative": {
+        "precision": 0.6071,
+        "recall": 0.7083,
+        "f1": 0.6538
+      },
+      "Neutral": {
+        "precision": 0.6111,
+        "recall": 0.2821,
+        "f1": 0.386
+      },
+      "Positive": {
+        "precision": 0.9758,
+        "recall": 0.9936,
+        "f1": 0.9846
+      }
+    }
+  },
+  {
+    "model": "DeBERTa",
+    "test_accuracy": 0.9549,
+    "test_f1_macro": 0.6813,
+    "class_performance": {
+      "Negative": {
+        "precision": 0.6429,
+        "recall": 0.75,
+        "f1": 0.6923
+      },
+      "Neutral": {
+        "precision": 0.4615,
+        "recall": 0.3077,
+        "f1": 0.3692
+      },
+      "Positive": {
+        "precision": 0.9777,
+        "recall": 0.9872,
+        "f1": 0.9824
+      }
+    }
+  }
+]
